@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Administrative Tasks Console - Demo</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+<style>
+body{background:#050505;color:#fff;overflow-x:hidden}
+#matrix{position:fixed;inset:0;z-index:-1;opacity:.25}
+.glass{background:rgba(10,20,10,.92);border:1px solid rgba(0,255,65,.25);box-shadow:0 0 20px rgba(0,255,65,.1)}
+.neon{color:#00ff41}
+.tool{cursor:pointer;transition:.3s}
+.tool:hover{transform:translateX(8px);color:#00ff41}
+#splash{position:fixed;inset:0;background:#000;display:flex;align-items:center;justify-content:center;flex-direction:column;z-index:9999}
+.logo{width:220px;height:220px;border:5px solid #00ff41;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:4rem;color:#00ff41}
+.terminal{background:#000;border:1px solid #00ff41;padding:15px;height:250px;overflow:auto;font-family:monospace}
+.hidden{display:none}
+
+/* Premium ADUC View */
+#adView{margin-top:18px;}
+.ad-layout{display:grid;grid-template-columns:320px 1fr;gap:16px;align-items:start;}
+@media (max-width:900px){.ad-layout{grid-template-columns:1fr;}}
+.ad-panel{background:rgba(10,20,10,.92);border:1px solid rgba(0,255,65,.25);box-shadow:0 0 20px rgba(0,255,65,.08);border-radius:14px;overflow:hidden;}
+.ad-panel-header{padding:14px 16px;border-bottom:1px solid rgba(0,255,65,.18);display:flex;justify-content:space-between;align-items:center;gap:10px;}
+.ad-panel-header .title{color:#00ff41;font-family:monospace;font-weight:700;display:flex;align-items:center;gap:10px;}
+.ad-subtle{color:#b0b0b0;font-size:.9rem;}
+.ad-tree-wrap{padding:12px 12px 16px;}
+.ad-tree-ul{list-style:none;padding-left:0;margin:0;max-height:420px;overflow:auto;}
+.ad-tree-btn{width:100%;text-align:left;background:transparent;border:none;color:#b0b0b0;padding:9px 10px;border-radius:10px;cursor:pointer;transition:.2s;}
+.ad-tree-btn:hover{background:rgba(0,255,65,.06);color:#00ff41;box-shadow:inset 0 0 0 1px rgba(0,255,65,.12);}
+.ad-search{padding:12px 16px 16px;}
+.ad-search-row{display:flex;gap:10px;align-items:center;}
+.ad-search-row input{flex:1;background:rgba(0,0,0,.5);border:1px solid rgba(0,255,65,.22);border-radius:10px;color:#fff;padding:10px 12px;}
+.ad-btn{padding:10px 14px;border:2px solid rgba(0,255,65,.35);background:transparent;color:#00ff41;border-radius:10px;font-weight:700;cursor:pointer;transition:.2s;}
+.ad-btn:hover{background:rgba(0,255,65,.12);box-shadow:0 0 18px rgba(0,255,65,.18);}
+.ad-error{color:#ff4444;padding:10px 16px;}
+.ad-table-wrap{padding:0 16px 16px;}
+.user-table{width:100%;border-collapse:collapse;}
+.user-table th,.user-table td{padding:10px 12px;border-bottom:1px solid rgba(0,255,65,.18);font-size:.9rem;vertical-align:top;}
+.user-table th{color:#00ff41;font-family:monospace;text-transform:uppercase;font-size:.78rem;letter-spacing:.6px;}
+.ad-user-name{font-weight:700;color:#fff;}
+.ad-user-sub{font-size:.78rem;color:#7f7f7f;word-break:break-word;}
+.status-badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:.76rem;font-weight:700;border:1px solid rgba(0,255,65,.25);}
+.ad-status.active{color:#00ff41;background:rgba(0,255,65,.12);border-color:rgba(0,255,65,.3)}
+.ad-status.inactive{color:#ff4444;background:rgba(255,68,68,.12);border-color:rgba(255,68,68,.3)}
+.ad-status.pending{color:#ffaa00;background:rgba(255,170,0,.12);border-color:rgba(255,170,0,.3)}
+.action-btns{display:flex;gap:8px;}
+.action-btn{width:34px;height:34px;border-radius:10px;border:1px solid rgba(0,255,65,.22);background:transparent;color:#b0b0b0;cursor:pointer;transition:.2s;}
+.action-btn:hover{border-color:#00ff41;color:#00ff41;box-shadow:0 0 18px rgba(0,255,65,.15)}
+
+</style>
+</head>
+<body>
+<canvas id="matrix"></canvas>
+
+<div id="splash">
+  <div class="logo">DK</div>
+  <h2 class="neon mt-3">Loading Administrative Tasks...</h2>
+</div>
+
+<div class="container py-4 hidden" id="app">
+<div class="glass p-3 rounded">
+<h2 class="neon"><i class="fas fa-tools"></i> Administrative Tasks Console Demo</h2>
+
+<ul class="nav nav-tabs mt-3">
+<li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#home">Home</button></li>
+<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#ad">Active Directory</button></li>
+<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#m365">M365</button></li>
+</ul>
+
+<div class="tab-content p-3">
+<div class="tab-pane fade show active" id="home">
+<h4 class="neon">Welcome to Admin Panel</h4>
+<p>Double click tools to launch actions.</p>
+</div>
+
+<div class="tab-pane fade" id="ad">
+<div class="tool" ondblclick="runTool('Open AD Users & Computers')">➜ Open AD Users & Computers</div><hr>
+<div class="tool" ondblclick="runTool('Password Reset')">➜ Password Reset</div><hr>
+<div class="tool" ondblclick="runTool('DNS Manager')">➜ DNS Manager</div><hr>
+<div class="tool" ondblclick="runTool('Account Lockout Tool')">➜ Account Lockout Tool</div>
+</div>
+
+<div class="tab-pane fade" id="m365">
+<div class="tool" ondblclick="runTool('Exchange Admin')">➜ Exchange Admin</div><hr>
+<div class="tool" ondblclick="runTool('SharePoint Admin')">➜ SharePoint Admin</div><hr>
+<div class="tool" ondblclick="runTool('Mailbox Permissions')">➜ Mailbox Permissions</div>
+</div>
+</div>
+
+<h5 class="neon">PowerShell Execution Log</h5>
+<div class="terminal" id="terminal">
+PS C:\AdminPanel> Ready...
+</div>
+
+<!-- ADUC-like view (populated from /api/ad/users) -->
+<div id="adView" class="hidden">
+  <div class="ad-layout">
+    <div class="ad-panel">
+      <div class="ad-panel-header">
+        <div>
+          <div class="title"><i class="fas fa-project-diagram"></i> Active Directory</div>
+          <div class="ad-subtle">corp.local</div>
+        </div>
+<span class="status-badge" style="border-color:rgba(0,255,65,.35);color:#00ff41; background:rgba(0,255,65,.08)"><i class="fas fa-gear"></i> Live</span>
+      </div>
+      <div class="ad-tree-wrap">
+        <div class="ad-subtle" style="margin-bottom:8px"><i class="fas fa-network-wired"></i> Objects</div>
+        <div id="adTreeRoot"></div>
+      </div>
+    </div>
+
+    <div class="ad-panel">
+      <div class="ad-panel-header">
+        <div>
+          <div class="title"><i class="fas fa-users"></i> Users</div>
+          <div class="ad-subtle">Double-click to act (demo)</div>
+        </div>
+        <span class="status-badge" style="border-color:rgba(0,255,65,.35);color:#00ff41; background:rgba(0,255,65,.08)"><i class="fas fa-database"></i> MySQL</span>
+      </div>
+
+      <div class="ad-search">
+        <div class="ad-search-row">
+          <input id="adSearch" placeholder="Search users..." />
+          <button id="adSearchBtn" class="ad-btn" type="button"><i class="fas fa-search"></i> Search</button>
+        </div>
+        <div id="adLoading" class="ad-subtle mt-2 hidden"><i class="fas fa-spinner fa-spin"></i> Loading from database...</div>
+        <div id="adError" class="ad-error mt-2 hidden"></div>
+      </div>
+
+      <div class="ad-table-wrap">
+        <table class="user-table">
+          <thead>
+            <tr>
+              <th>User</th>
+              <th>Department</th>
+              <th>Title</th>
+              <th>Status</th>
+              <th>Last logon</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="adUsersTbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+const apiPort = 3001; // matches running server (server/.env API_PORT)
+
+async function boot(){
+  // Wait for API health to avoid looking "stuck" when backend fails.
+  const splash = document.getElementById('splash');
+  const appEl = document.getElementById('app');
+  const logo = document.querySelector('.logo');
+
+  const setStatus = (msg, color) => {
+    const h2 = splash.querySelector('h2');
+    h2.textContent = msg;
+    h2.style.color = color || '#00ff41';
+  };
+
+  // If the splash takes too long, users interpret it as “stuck on logo”.
+  // Hide it as a hard fallback to avoid a permanent stuck UI.
+  setStatus('Connecting to Admin API...', '#00ff41');
+  setTimeout(()=>{splash.style.display='none'; appEl.classList.remove('hidden');}, 3500);
+
+
+  try{
+    // try a few times quickly
+    for (let i=0;i<10;i++){
+      const resp = await fetch(`http://127.0.0.1:${apiPort}/api/health`, {cache:'no-store'});
+      if(resp.ok){
+        splash.style.display='none';
+        appEl.classList.remove('hidden');
+        return;
+      }
+      await new Promise(r=>setTimeout(r, 300));
+    }
+
+    // If still not ok, show error but still reveal UI.
+    // This prevents the page from looking permanently stuck on the logo.
+    setStatus(`Admin API unavailable (http://127.0.0.1:${apiPort}/api/health). Check server/.env + MySQL.`, '#ff4444');
+    setTimeout(()=>{splash.style.display='none'; appEl.classList.remove('hidden');}, 800);
+  }catch(e){
+    setStatus(`Admin API connection failed. (Try http://127.0.0.1:${apiPort}/api/health)`, '#ff4444');
+    setTimeout(()=>{splash.style.display='none'; appEl.classList.remove('hidden');}, 800);
+  }
+}
+
+boot();
+
+function appendLog(html){
+  const t=document.getElementById('terminal');
+  t.innerHTML += `<div>${html}</div>`;
+  t.scrollTop=t.scrollHeight;
+}
+
+function escapeHtml(str){
+  return String(str ?? '').replace(/[&<>"']/g, (c)=>({
+    "&":"&amp;",
+    "<":"&lt;",
+    ">":"&gt;",
+    "\"":"&quot;",
+    "'":"&#039;"
+  }[c]));
+}
+
+async function runTool(name){
+  appendLog(`PS C:\\AdminPanel> Launch "${escapeHtml(name)}"`);
+  if(name === 'Open AD Users & Computers'){
+    await launchAdUsersAndComputers();
+    return;
+  }
+  setTimeout(()=>{appendLog(`[OK] ${escapeHtml(name)} launched successfully.`);},700);
+}
+
+async function launchAdUsersAndComputers(){
+  const view=document.getElementById('adView');
+  const spinner=document.getElementById('adLoading');
+  const errorBox=document.getElementById('adError');
+  const usersTbody=document.getElementById('adUsersTbody');
+  const searchInput=document.getElementById('adSearch');
+
+  view.classList.remove('hidden');
+  spinner.classList.remove('hidden');
+  errorBox.classList.add('hidden');
+  usersTbody.innerHTML='';
+
+  try{
+    const [treeResp, usersResp] = await Promise.all([
+      fetch(`http://127.0.0.1:${apiPort}/api/ad/tree`),
+      fetch(`http://127.0.0.1:${apiPort}/api/ad/users?limit=200`)
+    ]);
+
+
+    if(!usersResp.ok) throw new Error(`Users API failed: ${usersResp.status}`);
+
+    const tree = await treeResp.json();
+    const users = await usersResp.json();
+
+    // Render tree (simple: departments)
+    const treeRoot=document.getElementById('adTreeRoot');
+    treeRoot.innerHTML='';
+    const usersNode = tree?.tree?.children?.[0];
+    const deptNodes = usersNode?.children || [];
+
+    const ul=document.createElement('ul');
+    ul.className='ad-tree-ul';
+    deptNodes.forEach(d=>{
+      const li=document.createElement('li');
+      li.className='ad-tree-li';
+      const btn=document.createElement('button');
+      btn.type='button';
+      btn.className='ad-tree-btn';
+      btn.textContent = d.label;
+      btn.onclick=()=>{
+        searchInput.value=d.label;
+        loadAdUsersFiltered();
+      };
+      li.appendChild(btn);
+      ul.appendChild(li);
+    });
+    treeRoot.appendChild(ul);
+
+    // Render users
+    usersTbody.innerHTML='';
+    (users.users || []).forEach(u=>{
+      const tr=document.createElement('tr');
+      tr.innerHTML = `
+        <td>
+          <div class="ad-user-name">${escapeHtml(u.cn || u.username || '')}</div>
+          <div class="ad-user-sub">${escapeHtml(u.email || '')}</div>
+        </td>
+        <td>${escapeHtml(u.department || '')}</td>
+        <td>${escapeHtml(u.title || '')}</td>
+        <td><span class="status-badge ad-status ${u._statusClass || 'inactive'}">${escapeHtml(u.status)}</span></td>
+        <td>${escapeHtml(u.last_logon || '')}</td>
+        <td>
+          <div class="action-btns">
+            <button class="action-btn" title="Reset Password"><i class="fas fa-key"></i></button>
+            <button class="action-btn" title="Disable"><i class="fas fa-ban"></i></button>
+          </div>
+        </td>
+      `;
+      usersTbody.appendChild(tr);
+    });
+
+  }catch(err){
+    errorBox.classList.remove('hidden');
+    errorBox.innerHTML = `<i class="fas fa-triangle-exclamation"></i> ${escapeHtml(err.message || err)}`;
+  }finally{
+    spinner.classList.add('hidden');
+  }
+
+  // Bind search once
+  if(!window.__adSearchBound){
+    window.__adSearchBound = true;
+    document.getElementById('adSearchBtn').addEventListener('click', ()=>loadAdUsersFiltered());
+    searchInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter') loadAdUsersFiltered(); });
+  }
+
+  async function loadAdUsersFiltered(){
+    const q = searchInput.value || '';
+    spinner.classList.remove('hidden');
+    errorBox.classList.add('hidden');
+    usersTbody.innerHTML='';
+    try{
+      const resp = await fetch(`http://127.0.0.1:${apiPort}/api/ad/users?search=${encodeURIComponent(q)}&limit=200`);
+
+if(!resp.ok){
+        let detail = '';
+        try { const d = await resp.json(); detail = d?.error ? ` - ${d.error}` : ''; } catch {}
+        throw new Error(`Users API failed: ${resp.status}${detail}`);
+      }
+      const data = await resp.json();
+      (data.users || []).forEach(u=>{
+        const tr=document.createElement('tr');
+        tr.innerHTML = `
+          <td>
+            <div class="ad-user-name">${escapeHtml(u.cn || u.username || '')}</div>
+            <div class="ad-user-sub">${escapeHtml(u.email || '')}</div>
+          </td>
+          <td>${escapeHtml(u.department || '')}</td>
+          <td>${escapeHtml(u.title || '')}</td>
+          <td><span class="status-badge ad-status ${u._statusClass || 'inactive'}">${escapeHtml(u.status)}</span></td>
+          <td>${escapeHtml(u.last_logon || '')}</td>
+          <td>
+            <div class="action-btns">
+              <button class="action-btn" title="Reset Password"><i class="fas fa-key"></i></button>
+              <button class="action-btn" title="Disable"><i class="fas fa-ban"></i></button>
+            </div>
+          </td>
+        `;
+        usersTbody.appendChild(tr);
+      });
+    }catch(err){
+      errorBox.classList.remove('hidden');
+      errorBox.innerHTML = `<i class="fas fa-triangle-exclamation"></i> ${escapeHtml(err.message || err)}`;
+    }finally{
+      spinner.classList.add('hidden');
+    }
+  }
+
+  appendLog('[OK] Open AD Users & Computers loaded (sample data from Aiven MySQL).');
+}
+
+// matrix
+const c=document.getElementById('matrix'),x=c.getContext('2d');
+function rs(){c.width=innerWidth;c.height=innerHeight}rs();onresize=rs;
+let cols=Math.floor(innerWidth/20),drops=Array(cols).fill(1);
+setInterval(()=>{
+x.fillStyle='rgba(0,0,0,.08)';x.fillRect(0,0,c.width,c.height);
+x.fillStyle='#00ff41';x.font='15px monospace';
+drops.forEach((d,i)=>{x.fillText('01X#$'[Math.floor(Math.random()*5)],i*20,d*20);if(d*20>c.height&&Math.random()>.975)drops[i]=0;drops[i]++;});
+},50);
+</script>
+</body>
+</html>
