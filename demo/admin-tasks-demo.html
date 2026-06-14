@@ -163,7 +163,8 @@ PS C:\AdminPanel> Ready...
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-const apiPort = 3001; // matches running server (server/.env API_PORT)
+const API_BASE = 'https://portfolio-api-3sx8.onrender.com';
+console.log('API_BASE', API_BASE);
 
 async function boot(){
   // Wait for API health to avoid looking "stuck" when backend fails.
@@ -182,32 +183,28 @@ async function boot(){
   setStatus('Connecting to Admin API...', '#00ff41');
   setTimeout(()=>{splash.style.display='none'; appEl.classList.remove('hidden');}, 3500);
 
-
   try{
-    // try a few times quickly
-    for (let i=0;i<10;i++){
-      const resp = await fetch(`http://127.0.0.1:${apiPort}/api/health`, {cache:'no-store'});
-      if(resp.ok){
-        splash.style.display='none';
-        appEl.classList.remove('hidden');
-        return;
-      }
-      await new Promise(r=>setTimeout(r, 300));
+    const resp = await fetch(`${API_BASE}/api/health`, { cache: 'no-store' });
+
+    if(!resp.ok){
+      throw new Error(`Health check failed: HTTP ${resp.status}`);
     }
 
-    // If still not ok, show error but still reveal UI.
-    // This prevents the page from looking permanently stuck on the logo.
-    setStatus(`Admin API unavailable (http://127.0.0.1:${apiPort}/api/health). Check server/.env + MySQL.`, '#ff4444');
-    setTimeout(()=>{splash.style.display='none'; appEl.classList.remove('hidden');}, 800);
+    console.log('Health check passed');
+    splash.style.display='none';
+    appEl.classList.remove('hidden');
   }catch(e){
-    setStatus(`Admin API connection failed. (Try http://127.0.0.1:${apiPort}/api/health)`, '#ff4444');
+    console.error(e);
+    setStatus('API Offline', '#ff4444');
     setTimeout(()=>{splash.style.display='none'; appEl.classList.remove('hidden');}, 800);
   }
 }
 
+
+
 boot();
 
-// After DOM is ready (this script is at end of body), bind demo tab navigation.
+// After DOM is ready
 bindDemoTabs();
 
 function appendLog(html){
@@ -293,9 +290,14 @@ async function launchAdUsersAndComputers(){
 
   try{
     const [treeResp, usersResp] = await Promise.all([
-      fetch(`http://127.0.0.1:${apiPort}/api/ad/tree`),
-      fetch(`http://127.0.0.1:${apiPort}/api/ad/users?limit=200`)
+      fetch(`${API_BASE}/api/ad/tree`),
+      fetch(`${API_BASE}/api/ad/users?limit=200`)
     ]);
+
+    if(!treeResp.ok){
+      throw new Error(`Tree API failed: HTTP ${treeResp.status}`);
+    }
+
 
 
     if(!usersResp.ok) throw new Error(`Users API failed: ${usersResp.status}`);
@@ -370,7 +372,8 @@ async function launchAdUsersAndComputers(){
     errorBox.classList.add('hidden');
     usersTbody.innerHTML='';
     try{
-      const resp = await fetch(`http://127.0.0.1:${apiPort}/api/ad/users?search=${encodeURIComponent(q)}&limit=200`);
+      const resp = await fetch(`${API_BASE}/api/ad/users?search=${encodeURIComponent(q)}&limit=200`);
+
 
 if(!resp.ok){
         let detail = '';
