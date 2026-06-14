@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AD User Lifecycle Automation - Live Demo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root {
+            --matrix-green: #00ff41;
+            --bg-dark: #050505;
+            --bg-card: rgba(10, 20, 10, 0.9);
+            --text-primary: #ffffff;
+            --text-secondary: #b0b0b0;
+            --border: rgba(0, 255, 65, 0.2);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Matrix Canvas */
+        #matrix-bg {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 0;
+            opacity: 0.25;
+        }
+
+        .demo-container {
+            position: relative;
+            z-index: 1;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header */
+        .demo-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .demo-header h1 {
+            font-size: 1.6rem;
+            color: var(--matrix-green);
+            font-family: 'Fira Code', monospace;
+        }
+
+        .demo-header h1 i {
+            margin-right: 10px;
+        }
+
+        .demo-badge {
+            background: rgba(0, 255, 65, 0.1);
+            border: 1px solid var(--matrix-green);
+            color: var(--matrix-green);
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            animation: badgePulse 2s ease-in-out infinite;
+        }
+
+        @keyframes badgePulse {
+            0%, 100% { box-shadow: 0 0 5px rgba(0, 255, 65, 0.2); }
+            50% { box-shadow: 0 0 15px rgba(0, 255, 65, 0.4); }
+        }
+
+        .back-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            transition: color 0.3s;
+        }
+
+        .back-link:hover { color: var(--matrix-green); }
+
+        /* Stats Row */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .stat-card:hover {
+            border-color: rgba(0, 255, 65, 0.4);
+            transform: translateY(-3px);
+        }
+
+        .stat-card i {
+            font-size: 2rem;
+            color: var(--matrix-green);
+            margin-bottom: 10px;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            font-family: 'Fira Code', monospace;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+
+        /* Main Grid */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        @media (max-width: 900px) {
+            .main-grid { grid-template-columns: 1fr; }
+        }
+
+        .panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .panel-header {
+            padding: 18px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .panel-header h3 {
+            font-size: 1.1rem;
+            color: var(--matrix-green);
+            font-family: 'Fira Code', monospace;
+        }
+
+        .panel-header h3 i { margin-right: 8px; }
+
+        .panel-body { padding: 20px; }
+
+        /* Form */
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px 14px;
+            background: rgba(0, 20, 0, 0.6);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.95rem;
+            transition: all 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--matrix-green);
+            box-shadow: 0 0 10px rgba(0, 255, 65, 0.1);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        @media (max-width: 500px) {
+            .form-row { grid-template-columns: 1fr; }
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: 2px solid var(--matrix-green);
+            background: transparent;
+            color: var(--matrix-green);
+            border-radius: 8px;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            background: var(--matrix-green);
+            color: var(--bg-dark);
+            box-shadow: 0 0 20px rgba(0, 255, 65, 0.3);
+        }
+
+        .btn-block { width: 100%; justify-content: center; }
+
+        .btn-danger {
+            border-color: #ff4444;
+            color: #ff4444;
+        }
+
+        .btn-danger:hover {
+            background: #ff4444;
+            color: #fff;
+            box-shadow: 0 0 20px rgba(255, 68, 68, 0.3);
+        }
+
+        /* Terminal Output */
+        .terminal {
+            background: #000;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 15px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.85rem;
+            min-height: 200px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .terminal-line {
+            margin-bottom: 6px;
+            line-height: 1.5;
+        }
+
+        .terminal-prompt {
+            color: var(--matrix-green);
+        }
+
+        .terminal-success { color: #00ff41; }
+        .terminal-info { color: #00bfff; }
+        .terminal-warn { color: #ffaa00; }
+        .terminal-error { color: #ff4444; }
+        .terminal-dim { color: #666; }
+
+        /* User Table */
+        .user-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .user-table th,
+        .user-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.9rem;
+        }
+
+        .user-table th {
+            color: var(--matrix-green);
+            font-weight: 600;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .user-table td { color: var(--text-secondary); }
+
+        .user-table tr:hover td {
+            color: var(--text-primary);
+            background: rgba(0, 255, 65, 0.03);
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .status-active {
+            background: rgba(0, 255, 65, 0.15);
+            color: #00ff41;
+            border: 1px solid rgba(0, 255, 65, 0.3);
+        }
+
+        .status-inactive {
+            background: rgba(255, 68, 68, 0.15);
+            color: #ff4444;
+            border: 1px solid rgba(255, 68, 68, 0.3);
+        }
+
+        .status-pending {
+            background: rgba(255, 170, 0, 0.15);
+            color: #ffaa00;
+            border: 1px solid rgba(255, 170, 0, 0.3);
+        }
+
+        .action-btns {
+            display: flex;
+            gap: 8px;
+        }
+
+        .action-btn {
+            width: 30px;
+            height: 30px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            font-size: 0.8rem;
+        }
+
+        .action-btn:hover {
+            border-color: var(--matrix-green);
+            color: var(--matrix-green);
+        }
+
+        .action-btn.delete:hover {
+            border-color: #ff4444;
+            color: #ff4444;
+        }
+
+        /* Workflow Steps */
+        .workflow-steps {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 25px;
+            position: relative;
+        }
+
+        .workflow-steps::before {
+            content: '';
+            position: absolute;
+            top: 20px;
+            left: 10%;
+            right: 10%;
+            height: 2px;
+            background: var(--border);
+            z-index: 0;
+        }
+
+        .workflow-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .step-circle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px solid var(--border);
+            background: var(--bg-dark);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            transition: all 0.3s;
+        }
+
+        .workflow-step.active .step-circle {
+            border-color: var(--matrix-green);
+            color: var(--matrix-green);
+            box-shadow: 0 0 15px rgba(0, 255, 65, 0.3);
+        }
+
+        .workflow-step.completed .step-circle {
+            border-color: var(--matrix-green);
+            background: var(--matrix-green);
+            color: var(--bg-dark);
+        }
+
+        .step-label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .workflow-step.active .step-label {
+            color: var(--matrix-green);
+        }
+
+        /* Progress Bar */
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: rgba(0, 255, 65, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+            margin: 15px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--matrix-green), #00cc33);
+            border-radius: 3px;
+            transition: width 0.5s ease;
+            box-shadow: 0 0 10px rgba(0, 255, 65, 0.4);
+        }
+
+        /* Notification Toast */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .toast {
+            background: var(--bg-card);
+            border: 1px solid var(--matrix-green);
+            border-radius: 10px;
+            padding: 15px 20px;
+            min-width: 300px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: toastSlide 0.4s ease;
+            box-shadow: 0 5px 25px rgba(0, 255, 65, 0.15);
+        }
+
+        @keyframes toastSlide {
+            from { transform: translateX(120%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .toast i { font-size: 1.2rem; color: var(--matrix-green); }
+
+        .toast-content h4 {
+            font-size: 0.95rem;
+            margin-bottom: 2px;
+        }
+
+        .toast-content p {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        /* Full Width Panel */
+        .full-panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 25px;
+        }
+
+        .full-panel .panel-body {
+            overflow-x: auto;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-dark); }
+        ::-webkit-scrollbar-thumb { background: rgba(0, 255, 65, 0.3); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(0, 255, 65, 0.5); }
+    </style>
+</head>
+<body>
+    <canvas id="matrix-bg"></canvas>
+
+    <div class="demo-container">
+        <!-- Header -->
+        <div class="demo-header">
+            <div>
+                <h1><i class="fas fa-users-cog"></i> AD User Lifecycle Automation</h1>
+            </div>
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <span class="demo-badge"><i class="fas fa-circle" style="font-size: 8px; margin-right: 6px;"></i>Live Demo</span>
+                <a href="../../index.html#projects" class="back-link"><i class="fas fa-arrow-left"></i> Back to Portfolio</a>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-row">
+            <div class="stat-card">
+                <i class="fas fa-users"></i>
+                <div class="stat-value" id="statTotal">1,247</div>
+                <div class="stat-label">Total Users</div>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-user-check"></i>
+                <div class="stat-value" id="statActive">1,180</div>
+                <div class="stat-label">Active Users</div>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-user-clock"></i>
+                <div class="stat-value" id="statPending">42</div>
+                <div class="stat-label">Pending Onboarding</div>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-user-times"></i>
+                <div class="stat-value" id="statOffboard">25</div>
+                <div class="stat-label">Offboarded (30d)</div>
+            </div>
+        </div>
+
+        <!-- Main Grid -->
+        <div class="main-grid">
+            <!-- Onboarding Panel -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h3><i class="fas fa-user-plus"></i> User Onboarding</h3>
+                    <span class="status-badge status-active">Automated</span>
+                </div>
+                <div class="panel-body">
+                    <div class="workflow-steps">
+                        <div class="workflow-step completed">
+                            <div class="step-circle"><i class="fas fa-check"></i></div>
+                            <span class="step-label">Create AD</span>
+                        </div>
+                        <div class="workflow-step completed">
+                            <div class="step-circle"><i class="fas fa-check"></i></div>
+                            <span class="step-label">Assign Groups</span>
+                        </div>
+                        <div class="workflow-step active">
+                            <div class="step-circle"><i class="fas fa-cog fa-spin"></i></div>
+                            <span class="step-label">Provision</span>
+                        </div>
+                        <div class="workflow-step">
+                            <div class="step-circle">4</div>
+                            <span class="step-label">Notify</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Full Name</label>
+                        <input type="text" id="onboardName" placeholder="John Smith">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Department</label>
+                            <select id="onboardDept">
+                                <option>Engineering</option>
+                                <option>Marketing</option>
+                                <option>Sales</option>
+                                <option>HR</option>
+                                <option>Finance</option>
+                                <option>IT Support</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Role</label>
+                            <select id="onboardRole">
+                                <option>Employee</option>
+                                <option>Manager</option>
+                                <option>Contractor</option>
+                                <option>Intern</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Manager Email</label>
+                        <input type="email" id="onboardManager" placeholder="manager@company.com">
+                    </div>
+                    <button class="btn btn-block" onclick="runOnboarding()">
+                        <i class="fas fa-play"></i> Run Onboarding Script
+                    </button>
+                </div>
+            </div>
+
+            <!-- Terminal Output -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h3><i class="fas fa-terminal"></i> PowerShell Execution Log</h3>
+                    <span class="status-badge status-active"><i class="fas fa-circle" style="font-size: 6px; margin-right: 4px;"></i>Running</span>
+                </div>
+                <div class="panel-body">
+                    <div class="terminal" id="terminal">
+                        <div class="terminal-line"><span class="terminal-prompt">PS C:\Scripts></span> <span class="terminal-dim">Connect-ADService -Server dc01.corp.local</span></div>
+                        <div class="terminal-line"><span class="terminal-success">[OK]</span> Connected to Active Directory Domain Controller</div>
+                        <div class="terminal-line"><span class="terminal-prompt">PS C:\Scripts></span> <span class="terminal-dim">Get-ADUser -Filter * | Measure-Object</span></div>
+                        <div class="terminal-line"><span class="terminal-info">[INFO]</span> Total users in directory: <span class="terminal-success">1,247</span></div>
+                        <div class="terminal-line"><span class="terminal-prompt">PS C:\Scripts></span> <span class="terminal-dim">Get-PendingOnboarding -Status Pending</span></div>
+                        <div class="terminal-line"><span class="terminal-warn">[WARN]</span> 42 users pending onboarding approval</div>
+                        <div class="terminal-line"><span class="terminal-prompt">PS C:\Scripts></span> <span class="terminal-dim">_</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Offboarding Panel -->
+        <div class="panel" style="margin-bottom: 25px;">
+            <div class="panel-header">
+                <h3><i class="fas fa-user-minus"></i> User Offboarding</h3>
+                <span class="status-badge status-pending">Requires Approval</span>
+            </div>
+            <div class="panel-body">
+                <div class="form-row" style="grid-template-columns: 2fr 1fr 1fr auto; align-items: end;">
+                    <div class="form-group">
+                        <label>Username / Email</label>
+                        <input type="text" id="offboardUser" placeholder="john.smith@company.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Offboard Date</label>
+                        <input type="date" id="offboardDate">
+                    </div>
+                    <div class="form-group">
+                        <label>Reason</label>
+                        <select id="offboardReason">
+                            <option>Voluntary</option>
+                            <option>Termination</option>
+                            <option>Contract End</option>
+                            <option>Transfer</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <button class="btn btn-danger" onclick="runOffboarding()">
+                            <i class="fas fa-power-off"></i> Offboard
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- User Directory -->
+        <div class="full-panel">
+            <div class="panel-header">
+                <h3><i class="fas fa-database"></i> Active Directory User Directory</h3>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <input type="text" placeholder="Search users..." style="padding: 6px 12px; background: rgba(0,20,0,0.6); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary); font-size: 0.85rem; width: 200px;">
+                    <button class="btn" style="padding: 6px 14px; font-size: 0.85rem;"><i class="fas fa-sync-alt"></i> Sync</button>
+                </div>
+            </div>
+            <div class="panel-body">
+                <table class="user-table">
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Department</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                            <th>Last Login</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="userTableBody">
+                        <tr>
+                            <td><strong>john.smith</strong><br><span style="font-size:0.8rem; color:#666;">john.smith@corp.local</span></td>
+                            <td>Engineering</td>
+                            <td>Employee</td>
+                            <td><span class="status-badge status-active">Active</span></td>
+                            <td>2 hours ago</td>
+                            <td>
+                                <div class="action-btns">
+                                    <button class="action-btn" title="Edit"><i class="fas fa-edit"></i></button>
+                                    <button class="action-btn" title="Reset Password"><i class="fas fa-key"></i></button>
+                                    <button class="action-btn delete" title="Disable"><i class="fas fa-ban"></i></button>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>sarah.jones</strong><br><span style="font-size:0.8rem; color:#666;">sarah.jones@corp.local</span></td>
+                            <td>Marketing</td>
+                            <td>Manager</td>
+                            <td><span class="status-badge status-active">Active</span></td>
+                            <td>5 min ago</td>
+                            <td>
+                                <div class="action-btns">
+                                    <button class="action-btn" title="Edit"><i class="fas fa-edit"></i></button>
+                                    <button class="action-btn" title="Reset Password"><i class="fas fa-key"></i></button>
+                                    <button class="action-btn delete" title="Disable"><i class="fas fa-ban"></i></button>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>mike.chen</strong><br><span style="font-size:0.8rem; color:#666;">mike.chen@corp.local</span></td>
+                            <td>IT Support</td>
+                            <td>Employee</td>
+                            <td><span class="status-badge status-pending">Pending</span></td>
+                            <td>Never</td>
+                            <td>
+                                <div class="action-btns">
+                                    <button class="action-btn" title="Edit"><i class="fas fa-edit"></i></button>
+                                    <button class="action-btn" title="Approve"><i class="fas fa-check"></i></button>
+                                    <button class="action-btn delete" title="Reject"><i class="fas fa-times"></i></button>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>lisa.park</strong><br><span style="font-size:0.8rem; color:#666;">lisa.park@corp.local</span></td>
+                            <td>Finance</td>
+                            <td>Employee</td>
+                            <td><span class="status-badge status-inactive">Disabled</span></td>
+                            <td>14 days ago</td>
+                            <td>
+                                <div class="action-btns">
+                                    <button class="action-btn" title="Edit"><i class="fas fa-edit"></i></button>
+                                    <button class="action-btn" title="Enable"><i class="fas fa-power-off"></i></button>
+                                    <button class="action-btn delete" title="Delete"><i class="fas fa-trash"></i></button>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>david.kim</strong><br><span style="font-size:0.8rem; color:#666;">david.kim@corp.local</span></td>
+                            <td>Sales</td>
+                            <td>Contractor</td>
+                            <td><span class="status-badge status-active">Active</span></td>
+                            <td>1 day ago</td>
+                            <td>
+                                <div class="action-btns">
+                                    <button class="action-btn" title="Edit"><i class="fas fa-edit"></i></button>
+                                    <button class="action-btn" title="Reset Password"><i class="fas fa-key"></i></button>
+                                    <button class="action-btn delete" title="Disable"><i class="fas fa-ban"></i></button>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Access Review -->
+        <div class="panel">
+            <div class="panel-header">
+                <h3><i class="fas fa-shield-alt"></i> Access Review Report</h3>
+                <button class="btn" style="padding: 6px 14px; font-size: 0.85rem;" onclick="generateReport()">
+                    <i class="fas fa-file-export"></i> Generate Report
+                </button>
+            </div>
+            <div class="panel-body">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+                    <div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                            <span style="color: var(--text-secondary); font-size: 0.9rem;">Group Membership Compliance</span>
+                            <span style="color: var(--matrix-green); font-weight: 600;">94%</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 94%;"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                            <span style="color: var(--text-secondary); font-size: 0.9rem;">MFA Enrollment</span>
+                            <span style="color: var(--matrix-green); font-weight: 600;">87%</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 87%;"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                            <span style="color: var(--text-secondary); font-size: 0.9rem;">Password Policy Compliance</span>
+                            <span style="color: var(--matrix-green); font-weight: 600;">99%</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 99%;"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                            <span style="color: var(--text-secondary); font-size: 0.9rem;">Stale Accounts (90d+)</span>
+                            <span style="color: #ffaa00; font-weight: 600;">12%</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 12%; background: linear-gradient(90deg, #ffaa00, #ff6600);"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script>
+        // Matrix Background
+        const canvas = document.getElementById('matrix-bg');
+        const ctx = canvas.getContext('2d');
+        let w, h, cols, drops = [];
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&*';
+
+        function resize() {
+            w = canvas.width = window.innerWidth;
+            h = canvas.height = window.innerHeight;
+            cols = Math.floor(w / 14);
+            drops = [];
+            for (let i = 0; i < cols; i++) drops[i] = Math.random() * -100;
+        }
+        resize();
+        window.addEventListener('resize', resize);
+
+        function draw() {
+            ctx.fillStyle = 'rgba(5,5,5,0.05)';
+            ctx.fillRect(0, 0, w, h);
+            ctx.fillStyle = '#00ff41';
+            ctx.font = '14px monospace';
+            for (let i = 0; i < drops.length; i++) {
+                ctx.fillText(chars[Math.floor(Math.random() * chars.length)], i * 14, drops[i] * 14);
+                if (drops[i] * 14 > h && Math.random() > 0.975) drops[i] = 0;
+                drops[i]++;
+            }
+        }
+        setInterval(draw, 40);
+
+        // Terminal
+        const terminal = document.getElementById('terminal');
+
+        function addLine(html) {
+            const line = document.createElement('div');
+            line.className = 'terminal-line';
+            line.innerHTML = html;
+            terminal.appendChild(line);
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        function addPrompt() {
+            addLine('<span class="terminal-prompt">PS C:\\\\Scripts></span> <span class="terminal-dim">_</span>');
+        }
+
+        // Toast
+        function showToast(title, message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            const icon = type === 'success' ? 'fa-check-circle' : type === 'warn' ? 'fa-exclamation-triangle' : 'fa-info-circle';
+            toast.innerHTML = `
+                <i class="fas ${icon}"></i>
+                <div class="toast-content">
+                    <h4>${title}</h4>
+                    <p>${message}</p>
+                </div>
+            `;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 4000);
+        }
+
+        // Onboarding
+        function runOnboarding() {
+            const name = document.getElementById('onboardName').value || 'New User';
+            const dept = document.getElementById('onboardDept').value;
+            const role = document.getElementById('onboardRole').value;
+
+            // Remove last prompt
+            terminal.lastElementChild?.remove();
+
+            addLine(`<span class="terminal-prompt">PS C:\\\\Scripts></span> <span class="terminal-dim">New-ADUser -Name "${name}" -Department "${dept}" -Title "${role}"</span>`);
+
+            setTimeout(() => {
+                addLine(`<span class="terminal-info">[INFO]</span> Creating Active Directory account for <strong>${name}</strong>...`);
+            }, 400);
+
+            setTimeout(() => {
+                addLine(`<span class="terminal-success">[OK]</span> AD user created: CN=${name.replace(/ /g, '.')},OU=${dept},DC=corp,DC=local`);
+            }, 900);
+
+            setTimeout(() => {
+                addLine(`<span class="terminal-info">[INFO]</span> Assigning security groups for ${dept} department...`);
+            }, 1400);
+
+            setTimeout(() => {
+                addLine(`<span class="terminal-success">[OK]</span> Added to groups: ${dept}-Users, All-Employees, VPN-Access`);
+            }, 1900);
+
+            setTimeout(() => {
+                addLine(`<span class="terminal-info">[INFO]</span> Provisioning mailbox and cloud licenses...`);
+            }, 2400);
+
+            setTimeout(() => {
+                addLine(`<span class="terminal-success">[OK]</span> Exchange mailbox created. M365 E3 license assigned.`);
+            }, 2900);
+
+            setTimeout(() => {
+                addLine(`<span class="terminal-info">[INFO]</span> Sending welcome email to manager...`);
+            }, 3400);
+
+            setTimeout(() => {
+                addLine(`<span class="terminal-success">[OK]</span> Onboarding complete! Credentials sent securely.`);
+                addPrompt();
+                showToast('Onboarding Successful', `${name} has been successfully onboarded to ${dept}.`);
+
+                // Update stats
+                document.getElementById('statTotal').textContent = '1,248';
+                document.getElementById('statActive').textContent = '1,181';
+                document.getElementById('statPending').textContent = '41';
+            }, 3900);
+        }
+
+        // Offboarding
+        function runOffboarding() {
+            const user = document.getElementById('offboardUser').value || 'user@corp.local';
+
+            terminal.lastElementChild?.remove();
+
+            addLine(`<span class="terminal-prompt">PS C:\\\\Scripts></span> <span class="terminal-dim">Start-Offboarding -User "${user}" -Immediate</span>`);
+
+            setTimeout(() => {
+                addLine(`<span class="terminal-warn">[WARN]</span> Initiating offboarding for <strong>${user}</strong>...`);
+            }, 400);
+
+            setTimeout(() => {
+                addLine(`<span class="terminal-info">[INFO]</span> Disabling Active Directory account...`);
+            }, 800);
+
+            setTimeout(() => {
+                addLine(`<span class="terminal-success">[OK]</span> Account disabled. Sign-in blocked.`);
+            }, 1300);
+
+            setTimeout(() => {
+                addLine(`<span class="terminal-info">[INFO]</span> Revoking Azure AD sessions and tokens...`);
+            }, 1800);
+
+            setTimeout(() => {
+                addLine(`<span class="terminal-success">[OK]</span> All sessions revoked. MFA reset.`);
+            }, 2300);
+
+            setTimeout(() => {
+                addLine(`<span class="terminal-info">[INFO]</span> Removing from all security groups...`);
+            }, 2800);
+
+            setTimeout(() => {
+                addLine(`<span class="terminal-success">[OK]</span> Removed from 14 groups. Mailbox set to shared.`);
+            }, 3300);
+
+            setTimeout(() => {
+                addLine(`<span class="terminal-info">[INFO]</span> Forwarding email to manager. Data archived.`);
+            }, 3800);
+
+            setTimeout(() => {
+                addLine(`<span class="terminal-success">[OK]</span> Offboarding complete. Audit log updated.`);
+                addPrompt();
+                showToast('Offboarding Complete', `${user} has been successfully offboarded.`, 'warn');
+
+                document.getElementById('statActive').textContent = '1,180';
+                document.getElementById('statOffboard').textContent = '26';
+            }, 4300);
+        }
+
+        // Generate Report
+        function generateReport() {
+            terminal.lastElementChild?.remove();
+            addLine(`<span class="terminal-prompt">PS C:\\\\Scripts></span> <span class="terminal-dim">New-AccessReviewReport -OutputPath "C:\\\\Reports\\\\"</span>`);
+
+            setTimeout(() => {
+                addLine(`<span class="terminal-info">[INFO]</span> Generating access review report...`);
+            }, 500);
+
+            setTimeout(() => {
+                addLine(`<span class="terminal-success">[OK]</span> Report generated: AccessReview_2024.pdf`);
+                addPrompt();
+                showToast('Report Generated', 'Access review report has been exported successfully.');
+            }, 1500);
+        }
+
+        // Set today's date
+        document.getElementById('offboardDate').valueAsDate = new Date();
+    </script>
+</body>
+</html>
