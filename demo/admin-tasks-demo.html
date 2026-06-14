@@ -18,6 +18,14 @@ body{background:#050505;color:#fff;overflow-x:hidden}
 .terminal{background:#000;border:1px solid #00ff41;padding:15px;height:250px;overflow:auto;font-family:monospace}
 .hidden{display:none}
 
+/* Demo tabs (match homepage nav style) */
+.demo-tabs{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:16px;margin-bottom:12px;}
+.demo-tab{display:inline-flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid rgba(0,255,65,.18);background:rgba(0,20,0,.4);color:#b0b0b0;border-radius:12px;cursor:pointer;transition:all .25s ease;font-weight:700;}
+.demo-tab i{color:#00ff41;}
+.demo-tab:hover{border-color:rgba(0,255,65,.4);color:#00ff41;box-shadow:0 0 18px rgba(0,255,65,.12);transform:translateY(-2px);}
+.demo-tab.active{border-color:rgba(0,255,65,.55);background:rgba(0,255,65,.08);color:#00ff41;}
+
+
 /* Premium ADUC View */
 #adView{margin-top:18px;}
 .ad-layout{display:grid;grid-template-columns:320px 1fr;gap:16px;align-items:start;}
@@ -64,11 +72,12 @@ body{background:#050505;color:#fff;overflow-x:hidden}
 <div class="glass p-3 rounded">
 <h2 class="neon"><i class="fas fa-tools"></i> Administrative Tasks Console Demo</h2>
 
-<ul class="nav nav-tabs mt-3">
-<li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#home">Home</button></li>
-<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#ad">Active Directory</button></li>
-<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#m365">M365</button></li>
-</ul>
+<div class="demo-tabs" role="tablist" aria-label="Demo navigation">
+  <button class="demo-tab active" type="button" data-tab="home" role="tab" aria-selected="true"><i class="fas fa-house"></i> Home</button>
+  <button class="demo-tab" type="button" data-tab="ad" role="tab" aria-selected="false"><i class="fas fa-network-wired"></i> Active Directory</button>
+  <button class="demo-tab" type="button" data-tab="m365" role="tab" aria-selected="false"><i class="fas fa-cloud"></i> M365</button>
+</div>
+
 
 <div class="tab-content p-3">
 <div class="tab-pane fade show active" id="home">
@@ -198,6 +207,9 @@ async function boot(){
 
 boot();
 
+// After DOM is ready (this script is at end of body), bind demo tab navigation.
+bindDemoTabs();
+
 function appendLog(html){
   const t=document.getElementById('terminal');
   t.innerHTML += `<div>${html}</div>`;
@@ -212,6 +224,50 @@ function escapeHtml(str){
     "\"":"&quot;",
     "'":"&#039;"
   }[c]));
+}
+
+function bindDemoTabs(){
+  const buttons = document.querySelectorAll('.demo-tab');
+  const contentPanes = {
+    home: document.getElementById('home'),
+    ad: document.getElementById('ad'),
+    m365: document.getElementById('m365')
+  };
+
+  if(!buttons.length) return;
+
+  buttons.forEach((btn)=>{
+    btn.addEventListener('click', ()=>{
+      const tab = btn.getAttribute('data-tab');
+
+      buttons.forEach(b=>{
+        const active = b.getAttribute('data-tab') === tab;
+        b.classList.toggle('active', active);
+        b.setAttribute('aria-selected', String(active));
+      });
+
+      // toggle panes
+      Object.keys(contentPanes).forEach((k)=>{
+        const pane = contentPanes[k];
+        if(!pane) return;
+        const active = k === tab;
+        pane.classList.toggle('show', active);
+        pane.classList.toggle('active', active);
+        // keep fade class always for style
+        pane.style.display = active ? 'block' : 'none';
+      });
+
+      // ensure proper layout
+      window.dispatchEvent(new Event('resize'));
+    });
+  });
+
+  // initial display
+  Object.keys(contentPanes).forEach((k)=>{
+    const pane = contentPanes[k];
+    if(!pane) return;
+    pane.style.display = k === 'home' ? 'block' : 'none';
+  });
 }
 
 async function runTool(name){

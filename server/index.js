@@ -1,9 +1,15 @@
-// .env loading (optional): relies on dotenv being installed; ignore if missing
-try {
-  await import('dotenv/config');
-} catch {}
+// Load env deterministically (needed for local + hosted environments)
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Ensure we load the correct .env file from the server/ directory.
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.join(__dirname, '.env') });
 
 import express from 'express';
+
 import cors from 'cors';
 import mysql from 'mysql2/promise';
 

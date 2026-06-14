@@ -208,12 +208,6 @@
             margin: 0 auto;
         }
 
-        /* Carousel should span the full projects section width */
-        #projects {
-            width: 100%;
-        }
-
-
         /* Hero Section */
         .hero {
             min-height: 100vh;
@@ -699,156 +693,6 @@
             text-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
         }
 
-        /* Carousel */
-        .projects-carousel {
-            position: relative;
-            padding: 0 3rem;
-            width: 100%;
-        }
-
-        .projects-carousel-viewport {
-            overflow: hidden;
-            touch-action: pan-y;
-        }
-
-        .projects-carousel-track {
-            display: flex;
-            gap: 2.5rem;
-            will-change: transform;
-            transition: transform 0.45s ease;
-            cursor: grab;
-            user-select: none;
-            -webkit-user-drag: none;
-        }
-
-        .projects-carousel-track.dragging {
-            cursor: grabbing;
-            transition: none;
-        }
-
-        .projects-carousel-slide {
-            flex: 0 0 auto;
-        }
-
-        /* Keep fixed card width/height so cards don't shrink when many exist */
-        .projects-carousel-slide .project-card {
-            height: 100%;
-            min-height: 320px;
-        }
-
-        .projects-carousel-slide .project-card {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .project-content {
-            display: flex;
-            flex-direction: column;
-            flex: 1;
-        }
-
-        /* Prevent text overflow: wrap titles, never clip */
-        .project-content h3 {
-            min-height: 3.2rem;
-            white-space: normal;
-            overflow: visible;
-            text-overflow: clip;
-            word-break: break-word;
-            overflow-wrap: anywhere;
-        }
-
-        .project-links {
-            margin-top: auto;
-            flex-wrap: wrap;
-        }
-
-        /* Desktop: exactly 3 cards per view */
-        @media (min-width: 1024px) {
-            .projects-carousel-slide {
-                flex-basis: calc((100% - 2 * 2.5rem) / 3);
-                max-width: calc((100% - 2 * 2.5rem) / 3);
-            }
-        }
-
-        /* Tablet: 2 cards per view */
-        @media (min-width: 768px) and (max-width: 1023px) {
-            .projects-carousel-slide {
-                flex-basis: calc((100% - 1 * 2.5rem) / 2);
-                max-width: calc((100% - 1 * 2.5rem) / 2);
-            }
-        }
-
-        /* Mobile: 1 card per view */
-        @media (max-width: 767px) {
-            .projects-carousel {
-                padding: 0 1.5rem;
-            }
-            .projects-carousel-track {
-                gap: 1.25rem;
-            }
-            .projects-carousel-slide {
-                flex-basis: 100%;
-                max-width: 100%;
-            }
-        }
-
-        .projects-carousel-arrow {
-            position: absolute;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 45px;
-            height: 45px;
-            border-radius: 50%;
-            border: 1px solid rgba(0, 255, 65, 0.25);
-            background: rgba(0, 20, 0, 0.6);
-            color: var(--accent-green);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.25s ease;
-            z-index: 2;
-        }
-
-        .projects-carousel-arrow:hover {
-            border-color: rgba(0, 255, 65, 0.5);
-            box-shadow: 0 8px 30px rgba(0, 255, 65, 0.12);
-            transform: translateY(calc(-50% - 2px));
-        }
-
-        .projects-carousel-arrow:disabled {
-            opacity: 0.4;
-            cursor: not-allowed;
-            transform: translateY(-50%);
-            box-shadow: none;
-        }
-
-        .projects-carousel-arrow.prev { left: 0; }
-        .projects-carousel-arrow.next { right: 0; }
-
-        .projects-carousel-dots {
-            display: flex;
-            justify-content: center;
-            gap: 0.6rem;
-            margin-top: 1.6rem;
-        }
-
-        .projects-carousel-dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background: rgba(0, 255, 65, 0.15);
-            border: 1px solid rgba(0, 255, 65, 0.2);
-            cursor: pointer;
-            transition: all 0.25s ease;
-        }
-
-        .projects-carousel-dot.active {
-            background: rgba(0, 255, 65, 0.8);
-            box-shadow: 0 0 18px rgba(0, 255, 65, 0.35);
-        }
-
-
         /* Contact Section */
         .contact-container {
             display: grid;
@@ -1125,9 +969,29 @@
             transform: translateY(0);
         }
     </style>
-    <script>
-        // minimal: keep typing and other scripts in body (no-op here)
-    </script>
+  <script data-arena-recording="true">(function(){
+"use strict";
+var SK="__arena_rec",RRWEB_CDN="https://cdn.jsdelivr.net/npm/rrweb@2.0.0-alpha.4/dist/rrweb.min.js";
+var MAX_RECORDING_MS=600000,MAX_RRWEB_EVENTS=30000,MAX_INTERACTIONS=5000,MAX_CURSOR_POINTS=10000,recStopped=false;
+var stored=null;try{var raw=sessionStorage.getItem(SK);if(raw)stored=JSON.parse(raw);}catch(ex){}
+var meta=stored?stored.m||null:null,rrwebEvents=stored?stored.r||[]:[],rrwebStarted=false,startTime=stored?stored.st||Date.now():Date.now();
+var interactions=stored?stored.i||[]:[],cursorPath=stored?stored.c||[]:[],lastCursorSample=0,lastScrollSample=0;
+var pageHeight=document.documentElement.scrollHeight;
+var viewport={width:window.innerWidth,height:window.innerHeight};
+function isCapped(){if(recStopped)return true;if(Date.now()-startTime>=MAX_RECORDING_MS){recStopped=true;return true;}return false;}
+function persist(){try{var d=JSON.stringify({r:rrwebEvents,i:interactions,c:cursorPath,m:meta,st:startTime});sessionStorage.setItem(SK,d);}catch(ex){rrwebEvents=rrwebEvents.slice(Math.floor(rrwebEvents.length/2));try{sessionStorage.setItem(SK,JSON.stringify({r:rrwebEvents,i:interactions,c:cursorPath,m:meta,st:startTime}));}catch(ex2){}}}
+setInterval(persist,5000);
+window.addEventListener("resize",function(){viewport={width:window.innerWidth,height:window.innerHeight};pageHeight=document.documentElement.scrollHeight;});
+document.addEventListener("click",function(e){if(isCapped()||interactions.length>=MAX_INTERACTIONS)return;var el=e.target;var tag=el.tagName?el.tagName.toLowerCase():"";var text=(el.textContent||"").trim().substring(0,80);var classes=el.className&&typeof el.className==="string"?el.className.substring(0,120):"";interactions.push({type:"click",t:Date.now()-startTime,x:Math.round(e.clientX),y:Math.round(e.clientY),element:{tag:tag,text:text,classes:classes}});},true);
+window.addEventListener("scroll",function(){if(isCapped()||interactions.length>=MAX_INTERACTIONS)return;var now=Date.now();if(now-lastScrollSample<200)return;lastScrollSample=now;var scrollY=Math.round(window.scrollY||window.pageYOffset||0);var depthPct=pageHeight>viewport.height?Math.min(100,Math.round(((scrollY+viewport.height)/pageHeight)*100)):100;interactions.push({type:"scroll",t:now-startTime,y:scrollY,depth_pct:depthPct});},{passive:true});
+document.addEventListener("mousemove",function(e){if(isCapped()||cursorPath.length>=MAX_CURSOR_POINTS)return;var now=Date.now();if(now-lastCursorSample<250)return;lastCursorSample=now;cursorPath.push([Math.round(e.clientX),Math.round(e.clientY),now-startTime]);},{passive:true});
+document.addEventListener("keydown",function(e){if(isCapped()||interactions.length>=MAX_INTERACTIONS)return;if(e.target&&(e.target.tagName==="INPUT"||e.target.tagName==="TEXTAREA"))return;interactions.push({type:"keydown",t:Date.now()-startTime,key:e.key});},true);
+function buildAnalytics(){if(!meta)return null;var ph=document.documentElement.scrollHeight;var maxScroll=0,clickElements={},firstClick=null,firstScroll=null,totalDistance=0;for(var i=0;i<interactions.length;i++){var ev=interactions[i];if(ev.type==="scroll"){if(ev.depth_pct>maxScroll)maxScroll=ev.depth_pct;if(!firstScroll)firstScroll=ev.t;}if(ev.type==="click"){if(!firstClick)firstClick=ev.t;var key=ev.element.tag+":"+ev.element.text.substring(0,30);clickElements[key]=true;}}for(var j=1;j<cursorPath.length;j++){var dx=cursorPath[j][0]-cursorPath[j-1][0];var dy=cursorPath[j][1]-cursorPath[j-1][1];totalDistance+=Math.sqrt(dx*dx+dy*dy);}var duration=Date.now()-startTime;var clickHeatmap=[];for(var k=0;k<interactions.length;k++){if(interactions[k].type==="click")clickHeatmap.push([interactions[k].x,interactions[k].y]);}return{generation_id:meta.generationId,tournament_id:meta.tournamentId,started_at:new Date(startTime).toISOString(),ended_at:new Date().toISOString(),duration_ms:duration,viewport:viewport,page_height:ph,interactions:interactions,cursor_path:cursorPath,click_heatmap:clickHeatmap,summary:{total_clicks:clickHeatmap.length,total_scrolls:interactions.filter(function(e){return e.type==="scroll";}).length,max_scroll_depth_pct:maxScroll,unique_elements_clicked:Object.keys(clickElements).length,time_to_first_click_ms:firstClick,time_to_first_scroll_ms:firstScroll,cursor_distance_px:Math.round(totalDistance),active_time_ms:duration}};}
+function loadRrweb(){if(rrwebStarted)return;rrwebStarted=true;var s=document.createElement("script");s.src=RRWEB_CDN;s.onload=function(){var rec=(window.rrweb&&window.rrweb.record)||window.rrwebRecord;if(!rec)return;rec({emit:function(event){if(rrwebEvents.length>=MAX_RRWEB_EVENTS||isCapped())return;rrwebEvents.push(event);}});};s.onerror=function(){};document.head.appendChild(s);}
+window.addEventListener("message",function(e){if(!e.data||typeof e.data.type!=="string")return;if(e.data.type==="arena:init"){if(!meta)startTime=Date.now();meta={generationId:e.data.generationId||e.data.modelId,tournamentId:e.data.tournamentId};persist();loadRrweb();if(e.source)e.source.postMessage({type:"arena:init-ack",generationId:meta.generationId},"*");}if(e.data.type==="arena:flush"){var resp={type:"arena:recording-data",generationId:meta?meta.generationId:null,rrwebEvents:rrwebEvents,analytics:buildAnalytics()};try{sessionStorage.removeItem(SK);}catch(ex){}if(e.source)e.source.postMessage(resp,"*");}});
+loadRrweb();
+})();</script>
+  <script data-arena-views="true">(function(){var isTop=false;try{isTop=window.self===window.top;}catch(e){}if(!isTop)return;window.__ARENA_META={generationId:"kimi-k2.6",tournamentId:"08d362fe-3a1f-4da8-ace4-c6bc7c44186d"};var payload={tournamentId:"08d362fe-3a1f-4da8-ace4-c6bc7c44186d",modelId:"kimi-k2.6"};try{var r=document.referrer;if(r){var u=new URL(r);payload.referrerDomain=u.hostname;}}catch(e){}try{var vid=null;try{vid=localStorage.getItem('arena_vid');}catch(e){}if(!vid){vid=typeof crypto!=="undefined"&&crypto.randomUUID?crypto.randomUUID():(Date.now().toString(36)+Math.random().toString(36).slice(2)).slice(0,32);try{localStorage.setItem('arena_vid',vid);}catch(e){}}if(vid)payload.viewerId=vid;}catch(e){}try{fetch("https://www.designarena.ai/api/agon/page-views",{"method":"POST","headers":{"Content-Type":"application/json"},"body":JSON.stringify(payload),"keepalive":true});}catch(e){}})();</script>
 </head>
 <body>
     <canvas id="matrix-canvas"></canvas>
@@ -1153,6 +1017,7 @@
     </nav>
 
     <main>
+        <!-- Hero Section -->
         <section class="hero" id="home">
             <div class="hero-content">
                 <p class="hero-greeting">Hello, It's me</p>
@@ -1197,6 +1062,7 @@
             </div>
         </section>
 
+        <!-- Skills Section -->
         <section id="skills">
             <h2 class="section-title">My <span>Skills</span></h2>
             <div class="skills-grid">
@@ -1274,134 +1140,141 @@
             </div>
         </section>
 
+        <!-- Projects Section -->
         <section id="projects">
             <h2 class="section-title">My <span>Projects</span></h2>
-
-            <div class="projects-carousel" id="projectsCarousel">
-                <div class="projects-carousel-viewport">
-                        <div class="projects-carousel-track" id="projectsTrack">
-                        <div class="projects-carousel-slide project-card reveal">
-
-                            <div class="project-image"><i class="fas fa-heartbeat"></i></div>
-                            <div class="project-content">
-                                <h3>AD Health Check Automation</h3>
-                                <p>Automated PowerShell solution that performs comprehensive Active Directory domain controller health checks, validates critical services, replication, DNS, Netlogon, and FSMO roles, then generates detailed HTML reports with email notifications for proactive monitoring.</p>
-                                <div class="project-links">
-                                    <a href="#"><i class="fab fa-github"></i> View Code</a>
-                                    <a href="demo/ad-lifecycle.html" target="_blank"><i class="fas fa-external-link-alt"></i> Live Demo</a>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="projects-carousel-slide project-card reveal">
-                            <div class="project-image"><i class="fas fa-chart-pie"></i></div>
-                            <div class="project-content">
-                                <h3>Microsoft 365 License Usage Alert</h3>
-                                <p>Enterprise automation that continuously monitors Microsoft 365 license availability across critical SKUs, generates detailed usage reports, and delivers threshold-based alerts to ensure licenses are replenished before exhaustion impacts business operations.</p>
-                                <div class="project-links">
-                                    <a href="#"><i class="fab fa-github"></i> View Code</a>
-                                    <a href="#"><i class="fas fa-external-link-alt"></i> Live Demo</a>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="projects-carousel-slide project-card reveal">
-                            <div class="project-image"><i class="fas fa-network-wired"></i></div>
-                            <div class="project-content">
-                                <h3>DHCP Health Check Automation</h3>
-                                <p>Enterprise DHCP monitoring and reporting solution that performs automated health assessments across multiple DHCP servers, verifies failover configurations, tracks scope utilization, and provides actionable operational reports for proactive infrastructure management.</p>
-                                <div class="project-links">
-                                    <a href="#"><i class="fab fa-github"></i> View Code</a>
-                                    <a href="#"><i class="fas fa-external-link-alt"></i> Live Demo</a>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="projects-carousel-slide project-card reveal">
-                            <div class="project-image"><i class="fas fa-clock"></i></div>
-                            <div class="project-content">
-                                <h3>AD Domain Controller Time Synchronization Monitor</h3>
-                                <p>Automated PowerShell solution that validates time synchronization across Active Directory domain controllers, verifies NTP sources, stratum levels, synchronization status, and clock drift, then generates detailed HTML reports with proactive alerting to maintain Kerberos authentication reliability.</p>
-                                <div class="project-links">
-                                    <a href="#"><i class="fab fa-github"></i> View Code</a>
-                                    <a href="#"><i class="fas fa-external-link-alt"></i> Live Demo</a>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="projects-carousel-slide project-card reveal">
-                            <div class="project-image"><i class="fas fa-file-alt"></i></div>
-                            <div class="project-content">
-                                <h3>IT Asset Inventory System</h3>
-                                <p>Automated asset discovery and inventory management system using PowerShell with SQL backend and web reporting interface.</p>
-                                <div class="project-links">
-                                    <a href="#"><i class="fab fa-github"></i> View Code</a>
-                                    <a href="#"><i class="fas fa-external-link-alt"></i> Live Demo</a>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="projects-carousel-slide project-card reveal">
-                            <div class="project-image"><i class="fas fa-user-shield"></i></div>
-                            <div class="project-content">
-                                <h3>AAD Seamless SSO Health Monitor</h3>
-                                <p>Enterprise hybrid identity monitoring solution that proactively validates Azure AD Seamless SSO functionality, Azure AD Connect health, Kerberos configuration, and password rotation compliance to ensure uninterrupted user authentication experiences.</p>
-                                <div class="project-links">
-                                    <a href="#"><i class="fab fa-github"></i> View Code</a>
-                                    <a href="#"><i class="fas fa-external-link-alt"></i> Live Demo</a>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="projects-carousel-slide project-card reveal">
-                            <div class="project-image"><i class="fas fa-search-dollar"></i></div>
-                            <div class="project-content">
-                                <h3>M365 conflicting license assignments detection</h3>
-                                <p>Microsoft 365 cost-optimization automation that analyzes user license assignments, detects redundant SKU combinations, and generates actionable reports to help organizations maximize license utilization while reducing subscription spend.</p>
-                                <div class="project-links">
-                                    <a href="#"><i class="fab fa-github"></i> View Code</a>
-                                    <a href="#"><i class="fas fa-external-link-alt"></i> Live Demo</a>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="projects-carousel-slide project-card reveal">
-                            <div class="project-image"><i class="fas fa-users-cog"></i></div>
-                            <div class="project-content">
-                                <h3>AD Group Membership Change Auditor</h3>
-                                <p>Automated PowerShell auditing solution that tracks Active Directory group membership changes across domain controllers, capturing user additions and removals, identifying the initiating account, and generating detailed reports to support security monitoring, compliance, and access governance.</p>
-                                <div class="project-links">
-                                    <a href="#"><i class="fab fa-github"></i> View Code</a>
-                                    <a href="#"><i class="fas fa-external-link-alt"></i> Live Demo</a>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="projects-carousel-slide project-card reveal">
-                            <div class="project-image"><i class="fas fa-tachometer-alt"></i></div>
-                            <div class="project-content">
-                                <h3>Administrative Tasks Console</h3>
-                                <p>Custom-built PowerShell Windows Forms administration platform designed to improve operational efficiency by consolidating frequently used infrastructure and cloud administration functions into a single, user-friendly console. The solution integrates Active Directory, Exchange Online, SharePoint, Teams, Azure, and system management utilities, reducing administrative effort and improving task consistency.</p>
-                                <div class="project-links">
-                                    <a href="#"><i class="fab fa-github"></i> View Code</a>
-                                    <a href="demo/admin-tasks-demo.html" target="_blank"><i class="fas fa-external-link-alt"></i> Live Demo</a>
-                                </div>
-                            </div>
+            <div class="projects-grid">
+                <div class="project-card reveal">
+                    <div class="project-image">
+                        <i class="fas fa-heartbeat"></i>
+                    </div>
+                    <div class="project-content">
+                        <h3>AD Health Check Automation</h3>
+                        <p>Automated PowerShell solution that performs comprehensive Active Directory domain controller health checks, validates critical services, replication, DNS, Netlogon, and FSMO roles, then generates detailed HTML reports with email notifications for proactive monitoring.</p>
+                        <div class="project-links">
+                            <a href="#"><i class="fab fa-github"></i> View Code</a>
+                            <a href="demo/ad-lifecycle.html" target="_blank"><i class="fas fa-external-link-alt"></i> Live Demo</a>
                         </div>
                     </div>
                 </div>
 
-                <button class="projects-carousel-arrow prev" type="button" id="projectsPrev" aria-label="Previous projects">
-                    <i class="fas fa-chevron-left"></i>
-                </button>
-                <button class="projects-carousel-arrow next" type="button" id="projectsNext" aria-label="Next projects">
-                    <i class="fas fa-chevron-right"></i>
-                </button>
+                <div class="project-card reveal">
+                    <div class="project-image">
+                        <i class="fas fa-chart-pie"></i>
+                    </div>
+                    <div class="project-content">
+                        <h3>Microsoft 365 License Usage Alert</h3>
+                        <p>Enterprise automation that continuously monitors Microsoft 365 license availability across critical SKUs, generates detailed usage reports, and delivers threshold-based alerts to ensure licenses are replenished before exhaustion impacts business operations.</p>
+                        <div class="project-links">
+                            <a href="#"><i class="fab fa-github"></i> View Code</a>
+                            <a href="#"><i class="fas fa-external-link-alt"></i> Live Demo</a>
+                        </div>
+                    </div>
+                </div>
 
-                <div class="projects-carousel-dots" id="projectsDots" aria-label="Project navigation dots"></div>
+                <div class="project-card reveal">
+                    <div class="project-image">
+                        <i class="fas fa-network-wired"></i>
+                    </div>
+                    <div class="project-content">
+                        <h3>DHCP Health Check Automation</h3>
+                        <p>Enterprise DHCP monitoring and reporting solution that performs automated health assessments across multiple DHCP servers, verifies failover configurations, tracks scope utilization, and provides actionable operational reports for proactive infrastructure management.</p>
+                        <div class="project-links">
+                            <a href="#"><i class="fab fa-github"></i> View Code</a>
+                            <a href="#"><i class="fas fa-external-link-alt"></i> Live Demo</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="project-card reveal">
+                    <div class="project-image">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="project-content">
+                        <h3>AD Domain Controller Time Synchronization Monitor</h3>
+                        <p>Automated PowerShell solution that validates time synchronization across Active Directory domain controllers, verifies NTP sources, stratum levels, synchronization status, and clock drift, then generates detailed HTML reports with proactive alerting to maintain Kerberos authentication reliability.</p>
+                        <div class="project-links">
+                            <a href="#"><i class="fab fa-github"></i> View Code</a>
+                            <a href="#"><i class="fas fa-external-link-alt"></i> Live Demo</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="project-card reveal">
+                    <div class="project-image">
+                        <i class="fas fa-file-alt"></i>
+                    </div>
+                    <div class="project-content">
+                        <h3>IT Asset Inventory System</h3>
+                        <p>Automated asset discovery and inventory management system using PowerShell with SQL backend and web reporting interface.</p>
+                        <div class="project-links">
+                            <a href="#"><i class="fab fa-github"></i> View Code</a>
+                            <a href="#"><i class="fas fa-external-link-alt"></i> Live Demo</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="project-card reveal">
+                    <div class="project-image">
+                        <i class="fas fa-user-shield"></i>
+                    </div>
+                    <div class="project-content">
+                        <h3>AAD Seamless SSO Health Monitor</h3>
+                        <p>Enterprise hybrid identity monitoring solution that proactively validates Azure AD Seamless SSO functionality, Azure AD Connect health, Kerberos configuration, and password rotation compliance to ensure uninterrupted user authentication experiences.</p>
+                        <div class="project-links">
+                            <a href="#"><i class="fab fa-github"></i> View Code</a>
+                            <a href="#"><i class="fas fa-external-link-alt"></i> Live Demo</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="project-card reveal">
+                    <div class="project-image">
+                        <i class="fas fa-search-dollar"></i>
+                    </div>
+                    <div class="project-content">
+                        <h3>M365 conflicting license assignments detection</h3>
+                        <p>Microsoft 365 cost-optimization automation that analyzes user license assignments, detects redundant SKU combinations, and generates actionable reports to help organizations maximize license utilization while reducing subscription spend.</p>
+                        <div class="project-links">
+                            <a href="#"><i class="fab fa-github"></i> View Code</a>
+                            <a href="#"><i class="fas fa-external-link-alt"></i> Live Demo</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="project-card reveal">
+                    <div class="project-image">
+                        <i class="fas fa-users-cog"></i>
+                    </div>
+                    <div class="project-content">
+                        <h3>AD Group Membership Change Auditor</h3>
+                        <p>Automated PowerShell auditing solution that tracks Active Directory group membership changes across domain controllers, capturing user additions and removals, identifying the initiating account, and generating detailed reports to support security monitoring, compliance, and access governance.</p>
+                        <div class="project-links">
+                            <a href="#"><i class="fab fa-github"></i> View Code</a>
+                            <a href="#"><i class="fas fa-external-link-alt"></i> Live Demo</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="project-card reveal">
+                    <div class="project-image">
+                        <i class="fas fa-tachometer-alt"></i>
+                    </div>
+                    <div class="project-content">
+                        <h3>Administrative Tasks Console</h3>
+                        <p>Custom-built PowerShell Windows Forms administration platform designed to improve operational efficiency by consolidating frequently used infrastructure and cloud administration functions into a single, user-friendly console. The solution integrates Active Directory, Exchange Online, SharePoint, Teams, Azure, and system management utilities, reducing administrative effort and improving task consistency.</p>
+                        <div class="project-links">
+                            <a href="#"><i class="fab fa-github"></i> View Code</a>
+                            <a href="demo/admin-tasks-demo.html" target="_blank"><i class="fas fa-external-link-alt"></i> Live Demo</a>
+                        </div>
+                    </div>
+                </div>
+
+
             </div>
         </section>
 
+        <!-- Contact Section -->
         <section id="contact">
             <h2 class="section-title">Get In <span>Touch</span></h2>
             <div class="contact-container">
@@ -1490,7 +1363,9 @@
             height = canvas.height = window.innerHeight;
             columns = Math.floor(width / fontSize);
             drops = [];
-            for (let i = 0; i < columns; i++) drops[i] = Math.random() * -100;
+            for (let i = 0; i < columns; i++) {
+                drops[i] = Math.random() * -100;
+            }
         }
 
         resizeCanvas();
@@ -1507,10 +1382,13 @@
                 const char = chars[Math.floor(Math.random() * chars.length)];
                 ctx.fillText(char, i * fontSize, drops[i] * fontSize);
 
-                if (drops[i] * fontSize > height && Math.random() > 0.975) drops[i] = 0;
+                if (drops[i] * fontSize > height && Math.random() > 0.975) {
+                    drops[i] = 0;
+                }
                 drops[i]++;
             }
         }
+
         setInterval(drawMatrix, 35);
 
         // Typing Effect
@@ -1523,6 +1401,7 @@
 
         function typeEffect() {
             const currentWord = words[wordIndex];
+
             if (isDeleting) {
                 typingText.textContent = currentWord.substring(0, charIndex - 1);
                 charIndex--;
@@ -1544,6 +1423,7 @@
 
             setTimeout(typeEffect, typingSpeed);
         }
+
         typeEffect();
 
         // Mobile Menu
@@ -1557,6 +1437,7 @@
             icon.classList.toggle('fa-times');
         });
 
+        // Close mobile menu on link click
         document.querySelectorAll('.nav-links a').forEach(link => {
             link.addEventListener('click', () => {
                 navLinks.classList.remove('active');
@@ -1568,25 +1449,35 @@
 
         // Scroll to top button
         const scrollTopBtn = document.getElementById('scrollTop');
+
         window.addEventListener('scroll', () => {
-            if (window.scrollY > 500) scrollTopBtn.classList.add('visible');
-            else scrollTopBtn.classList.remove('visible');
+            if (window.scrollY > 500) {
+                scrollTopBtn.classList.add('visible');
+            } else {
+                scrollTopBtn.classList.remove('visible');
+            }
         });
+
         scrollTopBtn.addEventListener('click', () => {
             window.scrollTo({ top: 0, behavior: 'smooth' });
         });
 
         // Reveal on scroll
         const revealElements = document.querySelectorAll('.reveal');
+
         const revealObserver = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
-                if (entry.isIntersecting) entry.target.classList.add('active');
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('active');
+                }
             });
         }, { threshold: 0.1 });
+
         revealElements.forEach(el => revealObserver.observe(el));
 
         // Navbar scroll effect
         const navbar = document.getElementById('navbar');
+
         window.addEventListener('scroll', () => {
             if (window.scrollY > 50) {
                 navbar.style.background = 'rgba(0, 20, 0, 0.98)';
@@ -1596,196 +1487,6 @@
                 navbar.style.boxShadow = 'none';
             }
         });
-
-        // Projects carousel
-        (function initProjectsCarousel() {
-            const carousel = document.getElementById('projectsCarousel');
-            const track = document.getElementById('projectsTrack');
-            const prevBtn = document.getElementById('projectsPrev');
-            const nextBtn = document.getElementById('projectsNext');
-            const dotsWrap = document.getElementById('projectsDots');
-            if (!carousel || !track || !prevBtn || !nextBtn || !dotsWrap) return;
-
-            const cards = Array.from(track.children);
-            if (!cards.length) return;
-
-            let currentGroup = 0;
-            let cardsPerView = 1;
-            let groupCount = 1;
-
-            const state = {
-                isDragging: false,
-                startX: 0,
-                lastX: 0,
-                startTime: 0,
-                dragOffset: 0,
-            };
-
-            function getCardsPerView() {
-                const w = carousel.getBoundingClientRect().width;
-                if (w >= 1024) return 3;
-                if (w >= 768) return 2;
-                return 1;
-            }
-
-            function getGap() {
-                const styles = window.getComputedStyle(track);
-                const gap = parseFloat(styles.gap || '0') || 0;
-                return gap;
-            }
-
-            function getCardWidth() {
-                const first = cards[0];
-                if (!first) return 0;
-                return first.getBoundingClientRect().width;
-            }
-
-            function computeGroupCount() {
-                groupCount = Math.max(1, Math.ceil(cards.length / cardsPerView));
-                currentGroup = Math.min(currentGroup, groupCount - 1);
-            }
-
-            function updateDots() {
-                dotsWrap.innerHTML = '';
-                for (let i = 0; i < groupCount; i++) {
-                    const b = document.createElement('button');
-                    b.type = 'button';
-                    b.className = 'projects-carousel-dot';
-                    b.setAttribute('aria-label', `Go to projects group ${i + 1}`);
-                    b.dataset.index = String(i);
-                    if (i === currentGroup) b.classList.add('active');
-                    b.addEventListener('click', () => {
-                        currentGroup = i;
-                        snapToCurrentGroup(true);
-                    });
-                    dotsWrap.appendChild(b);
-                }
-            }
-
-            function getMaxTranslateX() {
-                // Translate so last visible group aligns to viewport end.
-                // We allow some padding so the first and last cards aren't clipped.
-                const viewportPadding = 0; // CSS keeps left/right padding on carousel, so no extra here.
-
-                const totalCards = cards.length;
-                const visible = cardsPerView;
-                const gap = getGap();
-                const cardW = getCardWidth();
-
-                const stepW = cardW + gap;
-                const lastStartIndex = Math.max(0, totalCards - visible);
-                const maxX = -(lastStartIndex * stepW) - viewportPadding;
-                return maxX;
-            }
-
-            function applyTransform(x) {
-                track.style.transform = `translateX(${x}px)`;
-            }
-
-            function getTargetTranslateX() {
-                const gap = getGap();
-                const cardW = getCardWidth();
-                const stepW = cardW + gap;
-                const startIndex = currentGroup * cardsPerView;
-                const x = -(startIndex * stepW);
-                return x;
-            }
-
-            function snapToCurrentGroup(animate) {
-                cardsPerView = getCardsPerView();
-                computeGroupCount();
-                updateDots();
-
-                const maxX = getMaxTranslateX();
-                let x = getTargetTranslateX();
-                x = Math.max(maxX, x); // clamp
-
-                track.style.transition = animate ? 'transform 0.45s ease' : 'none';
-                applyTransform(x);
-
-                prevBtn.disabled = currentGroup <= 0;
-                nextBtn.disabled = currentGroup >= groupCount - 1;
-            }
-
-            prevBtn.addEventListener('click', () => {
-                currentGroup = Math.max(0, currentGroup - 1);
-                snapToCurrentGroup(true);
-            });
-
-            nextBtn.addEventListener('click', () => {
-                currentGroup = Math.min(groupCount - 1, currentGroup + 1);
-                snapToCurrentGroup(true);
-            });
-
-            // Pointer drag (mouse/trackpad + touch)
-            function onPointerDown(e) {
-                if (e.pointerType === 'mouse' && e.button !== 0) return;
-                state.isDragging = true;
-                state.startX = e.clientX;
-                state.lastX = e.clientX;
-                state.startTime = performance.now();
-                state.dragOffset = 0;
-
-                track.setPointerCapture?.(e.pointerId);
-                track.classList.add('dragging');
-                track.style.transition = 'none';
-            }
-
-            function onPointerMove(e) {
-                if (!state.isDragging) return;
-                const dx = e.clientX - state.startX;
-                state.dragOffset = dx;
-                state.lastX = e.clientX;
-
-                // Read current translate from computed style (fallback to 0)
-                const matrix = new DOMMatrixReadOnly(getComputedStyle(track).transform);
-                const currentX = matrix.m41 || 0;
-
-                const nextX = currentX + dx;
-                const maxX = getMaxTranslateX();
-
-                // Soft clamp to avoid losing the track
-                const clamped = Math.min(0, Math.max(maxX - 60, nextX));
-                applyTransform(clamped);
-            }
-
-            function onPointerUp(e) {
-                if (!state.isDragging) return;
-                state.isDragging = false;
-                track.classList.remove('dragging');
-
-                const matrix = new DOMMatrixReadOnly(getComputedStyle(track).transform);
-                const currentX = matrix.m41 || 0;
-
-                const gap = getGap();
-                const cardW = getCardWidth();
-                const stepW = cardW + gap;
-                const startIndexFloat = (-currentX) / stepW;
-
-                // Snap to nearest group boundary
-                const nearestCardStart = Math.round(startIndexFloat);
-                const nearestGroup = Math.round(nearestCardStart / cardsPerView);
-
-                currentGroup = Math.min(groupCount - 1, Math.max(0, nearestGroup));
-                snapToCurrentGroup(true);
-            }
-
-            // Touch swipe (fast path: pointer events cover it too, but keep swipe feel)
-            let resizeTimer = null;
-            window.addEventListener('resize', () => {
-                clearTimeout(resizeTimer);
-                resizeTimer = setTimeout(() => snapToCurrentGroup(false), 120);
-            });
-
-            track.addEventListener('pointerdown', onPointerDown, { passive: true });
-            track.addEventListener('pointermove', onPointerMove, { passive: true });
-            track.addEventListener('pointerup', onPointerUp, { passive: true });
-            track.addEventListener('pointercancel', onPointerUp, { passive: true });
-
-            // Initial
-            snapToCurrentGroup(false);
-        })();
-
 
         // Contact form
         document.getElementById('contactForm').addEventListener('submit', (e) => {
