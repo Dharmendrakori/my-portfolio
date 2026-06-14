@@ -1777,10 +1777,22 @@
                 resizeTimer = setTimeout(() => snapToCurrentGroup(false), 120);
             });
 
-            track.addEventListener('pointerdown', onPointerDown, { passive: true });
+            // If user clicks/taps a link, don't start dragging.
+            function isInteractiveTarget(target) {
+                if (!target) return false;
+                const el = target.closest?.('a, button, input, textarea, select, label');
+                return !!el;
+            }
+
+            track.addEventListener('pointerdown', (e) => {
+                if (isInteractiveTarget(e.target)) return;
+                onPointerDown(e);
+            }, { passive: true });
+
             track.addEventListener('pointermove', onPointerMove, { passive: true });
             track.addEventListener('pointerup', onPointerUp, { passive: true });
             track.addEventListener('pointercancel', onPointerUp, { passive: true });
+
 
             // Initial
             snapToCurrentGroup(false);
