@@ -1,0 +1,329 @@
+# Portfolio Website Project Summary
+
+## Project Overview
+
+This is a personal portfolio website hosted on GitHub Pages.
+
+Frontend stack:
+
+* React + Vite
+* TypeScript
+* Tailwind CSS
+* Framer Motion
+
+Repository structure:
+
+```text
+Portfolio/
+├── src/
+├── public/
+├── demo/
+├── index.html
+└── ...
+```
+
+The site contains:
+
+* Portfolio projects
+* Interactive demos
+* Admin Tasks Demo
+* Active Directory simulation
+* System Administration showcase
+
+---
+
+# Backend Architecture
+
+A separate Node.js backend was created and deployed to Render.
+
+Backend repository:
+
+```text
+portfolio-api
+```
+
+Stack:
+
+* Node.js
+* Express
+* MySQL2
+* Aiven MySQL
+
+Deployment:
+
+```text
+Render
+↓
+Node/Express API
+↓
+Aiven MySQL
+```
+
+Render API URL:
+
+```text
+https://portfolio-api-3sx8.onrender.com
+```
+
+---
+
+# Working API Endpoints
+
+Health Check:
+
+```text
+GET /api/health
+```
+
+Example response:
+
+```json
+{
+  "ok": true,
+  "database": "connected"
+}
+```
+
+AD Users:
+
+```text
+GET /api/ad/users
+```
+
+Returns:
+
+```json
+{
+  "ok": true,
+  "count": 4,
+  "users": [...]
+}
+```
+
+AD Tree:
+
+```text
+GET /api/ad/tree
+```
+
+Returns department hierarchy.
+
+---
+
+# Database
+
+Hosted on Aiven MySQL.
+
+Environment variables are configured ONLY on Render.
+
+Frontend must NEVER contain:
+
+```env
+AIVEN_DB_HOST
+AIVEN_DB_PORT
+AIVEN_DB_USER
+AIVEN_DB_PASSWORD
+AIVEN_DB_NAME
+```
+
+Database credentials remain server-side.
+
+---
+
+# Render Deployment Fixes Already Completed
+
+The API initially failed because Render requires:
+
+```js
+const PORT = process.env.PORT || process.env.API_PORT || 3001;
+```
+
+instead of:
+
+```js
+app.listen(3001)
+```
+
+Current backend status:
+
+✅ Running
+
+✅ Responding
+
+✅ Connected to Aiven MySQL
+
+✅ Returning AD user data
+
+---
+
+# Frontend Integration
+
+The frontend should use:
+
+```js
+const API_BASE =
+  "https://portfolio-api-3sx8.onrender.com";
+```
+
+All API calls should be:
+
+```js
+fetch(`${API_BASE}/api/health`);
+fetch(`${API_BASE}/api/ad/users`);
+fetch(`${API_BASE}/api/ad/tree`);
+```
+
+No frontend code should reference:
+
+```text
+localhost
+127.0.0.1
+http://localhost:3001
+http://localhost:5000
+```
+
+---
+
+# Admin Tasks Demo
+
+File:
+
+```text
+demo/admin-tasks-demo.html
+```
+
+Requirements:
+
+* Use Render API
+* Health check on page load
+* Load users from `/api/ad/users`
+* Load tree from `/api/ad/tree`
+* Display connection status
+* Robust error handling
+* Never crash on failed fetch
+* Show user-friendly error banner
+
+Important:
+
+This page is plain HTML.
+
+Avoid:
+
+```js
+import ...
+```
+
+unless converted to:
+
+```html
+<script type="module">
+```
+
+For this page, prefer:
+
+```js
+const API_BASE =
+  "https://portfolio-api-3sx8.onrender.com";
+```
+
+---
+
+# Git Structure
+
+Frontend repository:
+
+```text
+Portfolio
+```
+
+Backend repository:
+
+```text
+portfolio-api
+```
+
+Do NOT commit:
+
+```text
+server/portfolio-api
+```
+
+into the Portfolio repo.
+
+A nested Git repository issue was already fixed using:
+
+```bash
+git rm --cached -r -f server/portfolio-api
+```
+
+Current status:
+
+```text
+Portfolio repo
+    Frontend only
+
+portfolio-api repo
+    Backend only
+```
+
+---
+
+# Project Carousel Requirement
+
+Projects section should display:
+
+Desktop:
+
+* 3 projects visible
+
+Tablet:
+
+* 2 projects visible
+
+Mobile:
+
+* 1 project visible
+
+Remaining projects should be accessed through carousel navigation.
+
+Requirements:
+
+* Previous/Next buttons
+* Smooth scrolling
+* Consistent card sizes
+* Pagination dots
+* No shrinking cards
+
+---
+
+# Current Goal
+
+Finish frontend migration to Render API.
+
+Verify:
+
+```text
+demo/admin-tasks-demo.html
+```
+
+and any React components use:
+
+```text
+https://portfolio-api-3sx8.onrender.com
+```
+
+instead of localhost.
+
+Then redeploy GitHub Pages and verify:
+
+* AD Users load
+* AD Tree loads
+* Health check passes
+* No "Failed to fetch" errors
+* Works both on:
+
+  * GitHub Pages
+  * Local XAMPP
+
+```
+```
