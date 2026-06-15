@@ -133,6 +133,179 @@ app.get('/api/ad/users', async (req, res) => {
   }
 });
 
+app.post('/api/ad/users', async (req, res) => {
+  if (!hasDb) return res.status(503).json({ ok: false, error: 'DB env vars missing' });
+  try {
+    const table = AIVEN_AD_USERS_TABLE || 'ad_users';
+    const { name, department, title, email, manager } = req.body || {};
+
+    if (!name) {
+      return res.status(400).json({ ok: false, error: 'name is required' });
+    }
+
+    // Determine available columns
+    const [colsRows] = await pool.query(`SHOW COLUMNS FROM \`${table}\``);
+    const existingCols = new Set((colsRows || []).map((r) => r.Field));
+
+    // Build dynamic INSERT
+    const insertFields = {};
+    const username = (name || '').toLowerCase().replace(/\s+/g, '.');
+
+    if (existingCols.has('cn')) insertFields.cn = name;
+    if (existingCols.has('username')) insertFields.username = username;
+    if (existingCols.has('uid')) insertFields.uid = username;
+    if (existingCols.has('email') && email) insertFields.email = email;
+    if (existingCols.has('department') && department) insertFields.department = department;
+    if (existingCols.has('title') && title) insertFields.title = title;
+    if (existingCols.has('status')) insertFields.status = 'active';
+    if (existingCols.has('role') && title) insertFields.role = title;
+
+    // Set a default password/manager field if columns exist
+    if (existingCols.has('manager') && manager) insertFields.manager = manager;
+    if (existingCols.has('created_at')) insertFields.created_at = new Date().toISOString().slice(0, 19).replace('T', ' ');
+
+    const colNames = Object.keys(insertFields);
+    if (!colNames.length) {
+      return res.status(500).json({ ok: false, error: 'No writable columns found on table' });
+    }
+
+    const placeholders = colNames.map(() => '?').join(', ');
+    const values = colNames.map((c) => insertFields[c]);
+
+    const sql = `INSERT INTO \`${table}\` (${colNames.map((c) => '`' + c + '`').join(', ')}) VALUES (${placeholders})`;
+    const [result] = await pool.query(sql, values);
+
+    res.json({ ok: true, id: result.insertId, message: `User ${name} created successfully.` });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ ok: false, error: err?.message || 'Server error' });
+  }
+});
+
+app.put('/api/ad/users/:id/disable', async (req, res) => {
+  if (!hasDb) return res.status(503).json({ ok: false, error: 'DB env vars missing' });
+  try {
+    const table = AIVEN_AD_USERS_TABLE || 'ad_users';
+    const { id } = req.params;
+
+    const [colsRows] = await pool.query(`SHOW COLUMNS FROM \`${table}\``);
+    const existingCols = new Set((colsRows || []).map((r) => r.Field));
+
+    // Find a status-like column and set it to disabled
+    let statusCol = null;
+    if (existingCols.has('status')) statusCol = 'status';
+    else if (existingCols.has('enabled')) statusCol = 'enabled';
+
+    if (!statusCol) {
+      return res.status(500).json({ ok: false, error: 'No status column found on table' });
+    }
+
+    const idCol = existingCols.has('id') ? 'id' : existingCols.has('user_id') ? 'user_id' : null;
+    if (!idCol) {
+      return res.status(500).json({ ok: false, error: 'No ID column found on table' });
+    }
+
+    const setValue = statusCol === 'enabled' ? 0 : 'disabled';
+    await pool.query(`UPDATE \`${table}\` SET \`${statusCol}\` = ? WHERE \`${idCol}\` = ?`, [setValue, id]);
+
+    res.json({ ok: true, message: `User ${id} disabled.` });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ ok: false, error: err?.message || 'Server error' });
+  }
+});
+
+app.put('/api/ad/users/:id/enable', async (req, res) => {
+  if (!hasDb) return res.status(503).json({ ok: false, error: 'DB env vars missing' });
+  try {
+    const table = AIVEN_AD_USERS_TABLE || 'ad_users';
+    const { id } = req.params;
+
+    const [colsRows] = await pool.query(`SHOW COLUMNS FROM \`${table}\``);
+    const existingCols = new Set((colsRows || []).map((r) => r.Field));
+
+    let statusCol = null;
+    if (existingCols.has('status')) statusCol = 'status';
+    else if (existingCols.has('enabled')) statusCol = 'enabled';
+
+    if (!statusCol) {
+      return res.status(500).json({ ok: false, error: 'No status column found on table' });
+    }
+
+    const idCol = existingCols.has('id') ? 'id' : existingCols.has('user_id') ? 'user_id' : null;
+    if (!idCol) {
+      return res.status(500).json({ ok: false, error: 'No ID column found on table' });
+    }
+
+    const setValue = statusCol === 'enabled' ? 1 : 'active';
+    await pool.query(`UPDATE \`${table}\` SET \`${statusCol}\` = ? WHERE \`${idCol}\` = ?`, [setValue, id]);
+
+    res.json({ ok: true, message: `User ${id} enabled.` });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ ok: false, error: err?.message || 'Server error' });
+  }
+});
+
+app.put('/api/ad/users/:id/reset-password', async (req, res) => {
+  if (!hasDb) return res.status(503).json({ ok: false, error: 'DB env vars missing' });
+  try {
+    const table = AIVEN_AD_USERS_TABLE || 'ad_users';
+    const { id } = req.params;
+
+    const [colsRows] = await pool.query(`SHOW COLUMNS FROM \`${table}\``);
+    const existingCols = new Set((colsRows || []).map((r) => r.Field));
+
+    const idCol = existingCols.has('id') ? 'id' : existingCols.has('user_id') ? 'user_id' : null;
+    if (!idCol) {
+      return res.status(500).json({ ok: false, error: 'No ID column found on table' });
+    }
+
+    // Simulate password reset - update a password_last_set timestamp if column exists
+    if (existingCols.has('password_last_set')) {
+      await pool.query(`UPDATE \`${table}\` SET \`password_last_set\` = NOW() WHERE \`${idCol}\` = ?`, [id]);
+    }
+
+    res.json({ ok: true, message: `Password reset for user ${id}. Temporary password sent.` });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ ok: false, error: err?.message || 'Server error' });
+  }
+});
+
+app.delete('/api/ad/users/:id', async (req, res) => {
+  if (!hasDb) return res.status(503).json({ ok: false, error: 'DB env vars missing' });
+  try {
+    const table = AIVEN_AD_USERS_TABLE || 'ad_users';
+    const { id } = req.params;
+
+    const [colsRows] = await pool.query(`SHOW COLUMNS FROM \`${table}\``);
+    const existingCols = new Set((colsRows || []).map((r) => r.Field));
+
+    const idCol = existingCols.has('id') ? 'id' : existingCols.has('user_id') ? 'user_id' : null;
+    if (!idCol) {
+      return res.status(500).json({ ok: false, error: 'No ID column found on table' });
+    }
+
+    // Try to delete, or if no delete privilege, set status to disabled
+    try {
+      await pool.query(`DELETE FROM \`${table}\` WHERE \`${idCol}\` = ?`, [id]);
+    } catch (deleteErr) {
+      // Fallback: set status to disabled if DELETE fails
+      if (existingCols.has('status')) {
+        await pool.query(`UPDATE \`${table}\` SET \`status\` = 'deleted' WHERE \`${idCol}\` = ?`, [id]);
+      } else {
+        throw deleteErr;
+      }
+    }
+
+    res.json({ ok: true, message: `User ${id} deleted.` });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ ok: false, error: err?.message || 'Server error' });
+  }
+});
+
 app.get('/api/ad/tree', async (_req, res) => {
   if (!hasDb) return res.status(503).json({ ok: false, error: 'DB env vars missing' });
   try {

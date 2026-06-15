@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AD User Lifecycle Automation - Live Demo</title>
-    <link rel="icon" type="image/svg+xml" href="/public/favicon.svg">
+    <link rel="icon" type="image/png" href="/public/images/favicon.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -524,22 +524,22 @@
         <div class="stats-row">
             <div class="stat-card">
                 <i class="fas fa-users"></i>
-                <div class="stat-value" id="statTotal">1,247</div>
+                <div class="stat-value" id="statTotal">…</div>
                 <div class="stat-label">Total Users</div>
             </div>
             <div class="stat-card">
                 <i class="fas fa-user-check"></i>
-                <div class="stat-value" id="statActive">1,180</div>
+                <div class="stat-value" id="statActive">…</div>
                 <div class="stat-label">Active Users</div>
             </div>
             <div class="stat-card">
                 <i class="fas fa-user-clock"></i>
-                <div class="stat-value" id="statPending">42</div>
+                <div class="stat-value" id="statPending">…</div>
                 <div class="stat-label">Pending Onboarding</div>
             </div>
             <div class="stat-card">
                 <i class="fas fa-user-times"></i>
-                <div class="stat-value" id="statOffboard">25</div>
+                <div class="stat-value" id="statOffboard">…</div>
                 <div class="stat-label">Offboarded (30d)</div>
             </div>
         </div>
@@ -619,9 +619,9 @@
                         <div class="terminal-line"><span class="terminal-prompt">PS C:\Scripts></span> <span class="terminal-dim">Connect-ADService -Server dc01.corp.local</span></div>
                         <div class="terminal-line"><span class="terminal-success">[OK]</span> Connected to Active Directory Domain Controller</div>
                         <div class="terminal-line"><span class="terminal-prompt">PS C:\Scripts></span> <span class="terminal-dim">Get-ADUser -Filter * | Measure-Object</span></div>
-                        <div class="terminal-line"><span class="terminal-info">[INFO]</span> Total users in directory: <span class="terminal-success">1,247</span></div>
+                        <div class="terminal-line"><span class="terminal-info">[INFO]</span> Total users in directory: <span class="terminal-success" id="termTotalCount">—</span></div>
                         <div class="terminal-line"><span class="terminal-prompt">PS C:\Scripts></span> <span class="terminal-dim">Get-PendingOnboarding -Status Pending</span></div>
-                        <div class="terminal-line"><span class="terminal-warn">[WARN]</span> 42 users pending onboarding approval</div>
+                        <div class="terminal-line"><span class="terminal-warn">[WARN]</span> <span id="termPendingCount">—</span> users pending onboarding approval</div>
                         <div class="terminal-line"><span class="terminal-prompt">PS C:\Scripts></span> <span class="terminal-dim">_</span></div>
                     </div>
                 </div>
@@ -667,8 +667,9 @@
             <div class="panel-header">
                 <h3><i class="fas fa-database"></i> Active Directory User Directory</h3>
                 <div style="display: flex; gap: 10px; align-items: center;">
-                    <input type="text" placeholder="Search users..." style="padding: 6px 12px; background: rgba(0,20,0,0.6); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary); font-size: 0.85rem; width: 200px;">
-                    <button class="btn" style="padding: 6px 14px; font-size: 0.85rem;"><i class="fas fa-sync-alt"></i> Sync</button>
+                    <input type="text" id="adSearch" placeholder="Search users..." style="padding: 6px 12px; background: rgba(0,20,0,0.6); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary); font-size: 0.85rem; width: 200px;">
+                    <button class="btn" style="padding: 6px 14px; font-size: 0.85rem;" onclick="syncDirectory()"><i class="fas fa-sync-alt"></i> Sync</button>
+                    <button class="btn" style="padding: 6px 14px; font-size: 0.85rem;" onclick="searchUsers()"><i class="fas fa-search"></i> Search</button>
                 </div>
             </div>
             <div class="panel-body">
@@ -685,73 +686,8 @@
                     </thead>
                     <tbody id="userTableBody">
                         <tr>
-                            <td><strong>john.smith</strong><br><span style="font-size:0.8rem; color:#666;">john.smith@corp.local</span></td>
-                            <td>Engineering</td>
-                            <td>Employee</td>
-                            <td><span class="status-badge status-active">Active</span></td>
-                            <td>2 hours ago</td>
-                            <td>
-                                <div class="action-btns">
-                                    <button class="action-btn" title="Edit"><i class="fas fa-edit"></i></button>
-                                    <button class="action-btn" title="Reset Password"><i class="fas fa-key"></i></button>
-                                    <button class="action-btn delete" title="Disable"><i class="fas fa-ban"></i></button>
-                                </div>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td><strong>sarah.jones</strong><br><span style="font-size:0.8rem; color:#666;">sarah.jones@corp.local</span></td>
-                            <td>Marketing</td>
-                            <td>Manager</td>
-                            <td><span class="status-badge status-active">Active</span></td>
-                            <td>5 min ago</td>
-                            <td>
-                                <div class="action-btns">
-                                    <button class="action-btn" title="Edit"><i class="fas fa-edit"></i></button>
-                                    <button class="action-btn" title="Reset Password"><i class="fas fa-key"></i></button>
-                                    <button class="action-btn delete" title="Disable"><i class="fas fa-ban"></i></button>
-                                </div>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td><strong>mike.chen</strong><br><span style="font-size:0.8rem; color:#666;">mike.chen@corp.local</span></td>
-                            <td>IT Support</td>
-                            <td>Employee</td>
-                            <td><span class="status-badge status-pending">Pending</span></td>
-                            <td>Never</td>
-                            <td>
-                                <div class="action-btns">
-                                    <button class="action-btn" title="Edit"><i class="fas fa-edit"></i></button>
-                                    <button class="action-btn" title="Approve"><i class="fas fa-check"></i></button>
-                                    <button class="action-btn delete" title="Reject"><i class="fas fa-times"></i></button>
-                                </div>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td><strong>lisa.park</strong><br><span style="font-size:0.8rem; color:#666;">lisa.park@corp.local</span></td>
-                            <td>Finance</td>
-                            <td>Employee</td>
-                            <td><span class="status-badge status-inactive">Disabled</span></td>
-                            <td>14 days ago</td>
-                            <td>
-                                <div class="action-btns">
-                                    <button class="action-btn" title="Edit"><i class="fas fa-edit"></i></button>
-                                    <button class="action-btn" title="Enable"><i class="fas fa-power-off"></i></button>
-                                    <button class="action-btn delete" title="Delete"><i class="fas fa-trash"></i></button>
-                                </div>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td><strong>david.kim</strong><br><span style="font-size:0.8rem; color:#666;">david.kim@corp.local</span></td>
-                            <td>Sales</td>
-                            <td>Contractor</td>
-                            <td><span class="status-badge status-active">Active</span></td>
-                            <td>1 day ago</td>
-                            <td>
-                                <div class="action-btns">
-                                    <button class="action-btn" title="Edit"><i class="fas fa-edit"></i></button>
-                                    <button class="action-btn" title="Reset Password"><i class="fas fa-key"></i></button>
-                                    <button class="action-btn delete" title="Disable"><i class="fas fa-ban"></i></button>
-                                </div>
+                            <td colspan="6" style="text-align:center; color:var(--text-secondary); padding:30px;">
+                                <i class="fas fa-spinner fa-spin" style="font-size:1.2rem; margin-right:8px;"></i>Loading users from database...
                             </td>
                         </tr>
                     </tbody>
@@ -845,6 +781,208 @@
         // Terminal
         const terminal = document.getElementById('terminal');
 
+        // --- AD lifecycle API integration ---
+        // Uses the same Admin API as admin-tasks-demo.html (production API)
+        const API_BASE = 'https://portfolio-api-3sx8.onrender.com';
+
+        async function apiPost(path, body) {
+            const res = await fetch(`${API_BASE}${path}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+                credentials: 'same-origin'
+            });
+            const text = await res.text();
+            let json = null;
+            try { json = text ? JSON.parse(text) : null; } catch { json = null; }
+            if (!res.ok) {
+                const msg = json?.error || json?.message || `Request failed: ${res.status}`;
+                throw new Error(msg);
+            }
+            return json;
+        }
+
+        async function apiPut(path) {
+            const res = await fetch(`${API_BASE}${path}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin'
+            });
+            const text = await res.text();
+            let json = null;
+            try { json = text ? JSON.parse(text) : null; } catch { json = null; }
+            if (!res.ok) {
+                const msg = json?.error || json?.message || `Request failed: ${res.status}`;
+                throw new Error(msg);
+            }
+            return json;
+        }
+
+        async function apiDelete(path) {
+            const res = await fetch(`${API_BASE}${path}`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin'
+            });
+            const text = await res.text();
+            let json = null;
+            try { json = text ? JSON.parse(text) : null; } catch { json = null; }
+            if (!res.ok) {
+                const msg = json?.error || json?.message || `Request failed: ${res.status}`;
+                throw new Error(msg);
+            }
+            return json;
+        }
+
+        function escapeHtml(str) {
+            const map = {};
+            map['&'] = '&' + 'amp;';
+            map['<'] = '&' + 'lt;';
+            map['>'] = '&' + 'gt;';
+            map['"'] = '&' + 'quot;';
+            map["'"] = '&' + '#039;';
+            return String(str ?? '').replace(/[&<>"']/g, (c) => map[c]);
+        }
+
+        async function apiGet(path) {
+            const res = await fetch(`${API_BASE}${path}`, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin'
+            });
+            const text = await res.text();
+            let json = null;
+            try { json = text ? JSON.parse(text) : null; } catch { json = null; }
+            if (!res.ok) {
+                const msg = json?.error || json?.message || `Request failed: ${res.status}`;
+                throw new Error(msg);
+            }
+            return json;
+        }
+
+        function renderUsersTable(users) {
+            const tbody = document.getElementById('userTableBody');
+            tbody.innerHTML = '';
+
+            const statusToClass = (status) => {
+                const s = String(status || '').toLowerCase();
+                if (s.includes('active') || s.includes('enabled')) return 'status-active';
+                if (s.includes('pending')) return 'status-pending';
+                return 'status-inactive';
+            };
+
+            if (!users || users.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--text-secondary); padding:30px;">No users found.</td></tr>';
+                return;
+            }
+
+            for (const u of users) {
+                const username = u.cn || u.username || u.uid || u.email || 'unknown';
+                const email = u.email || '';
+                const dept = u.department || '—';
+                const title = u.title || u.role || '—';
+                const status = u.status || 'unknown';
+                const last = u.last_logon || '—';
+                const id = u.uid ?? u.id ?? '';
+                const badgeClass = statusToClass(status);
+                const isActive = badgeClass === 'status-active';
+                const isInactive = badgeClass === 'status-inactive';
+                const safeUser = escapeHtml(username);
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${escapeHtml(username)}</strong>${email ? `<br><span style="font-size:0.8rem; color:#666;">${escapeHtml(email)}</span>` : ''}</td>
+                    <td>${escapeHtml(dept)}</td>
+                    <td>${escapeHtml(title)}</td>
+                    <td><span class="status-badge ${badgeClass}">${escapeHtml(status)}</span></td>
+                    <td>${escapeHtml(last)}</td>
+                    <td>
+                        <div class="action-btns">
+                            <button class="action-btn" title="Edit" onclick="showToast('Edit User', 'Edit dialog for ${safeUser}', 'info')"><i class="fas fa-edit"></i></button>
+                            <button class="action-btn" title="Reset Password" onclick="resetPassword('${id}', '${safeUser}')"><i class="fas fa-key"></i></button>
+                            ${isActive
+                                ? `<button class="action-btn delete" title="Disable" onclick="disableUser('${id}', '${safeUser}')"><i class="fas fa-ban"></i></button>`
+                                : `<button class="action-btn" title="Enable" onclick="enableUser('${id}', '${safeUser}')"><i class="fas fa-power-off"></i></button>`
+                            }
+                            <button class="action-btn delete" title="Delete" onclick="deleteUser('${id}', '${safeUser}')"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            }
+        }
+
+        function updateStats(users) {
+            const total = users.length;
+            const activeCount = users.filter((u) => {
+                const s = String(u.status || '').toLowerCase();
+                return s.includes('active') || s.includes('enabled');
+            }).length;
+            const pendingCount = users.filter((u) => {
+                const s = String(u.status || '').toLowerCase();
+                return s.includes('pending');
+            }).length;
+            const offboardCount = users.filter((u) => {
+                const s = String(u.status || '').toLowerCase();
+                return s.includes('disabled') || s.includes('inactive') || s === 'disabled';
+            }).length;
+
+            document.getElementById('statTotal').textContent = total.toLocaleString();
+            document.getElementById('statActive').textContent = activeCount.toLocaleString();
+            document.getElementById('statPending').textContent = pendingCount.toLocaleString();
+            document.getElementById('statOffboard').textContent = offboardCount.toLocaleString();
+
+            // Also update terminal references
+            const termTotal = document.getElementById('termTotalCount');
+            if (termTotal) termTotal.textContent = total.toLocaleString();
+            const termPending = document.getElementById('termPendingCount');
+            if (termPending) termPending.textContent = pendingCount + ' users';
+        }
+
+        async function syncDirectory() {
+            const syncBtn = document.querySelector('.btn i.fa-sync-alt')?.closest('button');
+            if (syncBtn) syncBtn.disabled = true;
+            try {
+                addLine('<span class="terminal-prompt">PS C:\\Scripts></span> <span class="terminal-dim">Sync-ADUsers</span>');
+                const data = await apiGet('/api/ad/users?limit=200');
+
+                const users = data?.users || [];
+                renderUsersTable(users);
+                updateStats(users);
+
+                addLine(`<span class="terminal-success">[OK]</span> Synced ${users.length} AD users from MySQL.`);
+            } catch (err) {
+                console.error(err);
+                addLine(`<span class="terminal-error">[ERROR]</span> ${String(err?.message || err)}`);
+                showToast('Sync Failed', String(err?.message || err), 'warn');
+            } finally {
+                if (syncBtn) syncBtn.disabled = false;
+            }
+        }
+
+        async function searchUsers() {
+            const searchInput = document.getElementById('adSearch');
+            const q = searchInput.value || '';
+            const searchBtn = document.querySelector('.btn i.fa-search')?.closest('button');
+            if (searchBtn) searchBtn.disabled = true;
+            try {
+                addLine(`<span class="terminal-prompt">PS C:\\Scripts></span> <span class="terminal-dim">Search-ADUsers -Query "${q}"</span>`);
+                const data = await apiGet(`/api/ad/users?search=${encodeURIComponent(q)}&limit=200`);
+
+                const users = data?.users || [];
+                renderUsersTable(users);
+
+                addLine(`<span class="terminal-success">[OK]</span> Found ${users.length} users matching "${q}".`);
+            } catch (err) {
+                console.error(err);
+                addLine(`<span class="terminal-error">[ERROR]</span> ${String(err?.message || err)}`);
+                showToast('Search Failed', String(err?.message || err), 'warn');
+            } finally {
+                if (searchBtn) searchBtn.disabled = false;
+            }
+        }
+
+
         function addLine(html) {
             const line = document.createElement('div');
             line.className = 'terminal-line';
@@ -874,105 +1012,198 @@
             setTimeout(() => toast.remove(), 4000);
         }
 
-        // Onboarding
-        function runOnboarding() {
+        // ---- Action button handlers (call real API endpoints) ----
+
+        async function disableUser(id, username) {
+            if (!id) { showToast('Cannot Disable', 'User ID not available', 'warn'); return; }
+            try {
+                addLine(`<span class="terminal-warn">[WARN]</span> Disabling user ${escapeHtml(username)}...`);
+                const result = await apiPut(`/api/ad/users/${encodeURIComponent(id)}/disable`);
+                addLine(`<span class="terminal-success">[OK]</span> ${result.message}`);
+                showToast('User Disabled', `${username} has been disabled.`);
+                await syncDirectory();
+            } catch (err) {
+                addLine(`<span class="terminal-error">[ERROR]</span> ${String(err?.message || err)}`);
+                showToast('Disable Failed', String(err?.message || err), 'warn');
+            }
+        }
+
+        async function enableUser(id, username) {
+            if (!id) { showToast('Cannot Enable', 'User ID not available', 'warn'); return; }
+            try {
+                addLine(`<span class="terminal-info">[INFO]</span> Enabling user ${escapeHtml(username)}...`);
+                const result = await apiPut(`/api/ad/users/${encodeURIComponent(id)}/enable`);
+                addLine(`<span class="terminal-success">[OK]</span> ${result.message}`);
+                showToast('User Enabled', `${username} has been enabled.`);
+                await syncDirectory();
+            } catch (err) {
+                addLine(`<span class="terminal-error">[ERROR]</span> ${String(err?.message || err)}`);
+                showToast('Enable Failed', String(err?.message || err), 'warn');
+            }
+        }
+
+        async function resetPassword(id, username) {
+            if (!id) { showToast('Cannot Reset Password', 'User ID not available', 'warn'); return; }
+            try {
+                addLine(`<span class="terminal-info">[INFO]</span> Resetting password for ${escapeHtml(username)}...`);
+                const result = await apiPut(`/api/ad/users/${encodeURIComponent(id)}/reset-password`);
+                addLine(`<span class="terminal-success">[OK]</span> ${result.message}`);
+                showToast('Password Reset', `Temporary password sent for ${username}.`);
+            } catch (err) {
+                addLine(`<span class="terminal-error">[ERROR]</span> ${String(err?.message || err)}`);
+                showToast('Password Reset Failed', String(err?.message || err), 'warn');
+            }
+        }
+
+        async function deleteUser(id, username) {
+            if (!id) { showToast('Cannot Delete', 'User ID not available', 'warn'); return; }
+            if (!confirm(`Are you sure you want to delete user "${username}"?`)) return;
+            try {
+                addLine(`<span class="terminal-warn">[WARN]</span> Deleting user ${escapeHtml(username)}...`);
+                const result = await apiDelete(`/api/ad/users/${encodeURIComponent(id)}`);
+                addLine(`<span class="terminal-success">[OK]</span> ${result.message}`);
+                showToast('User Deleted', `${username} has been deleted.`, 'warn');
+                await syncDirectory();
+            } catch (err) {
+                addLine(`<span class="terminal-error">[ERROR]</span> ${String(err?.message || err)}`);
+                showToast('Delete Failed', String(err?.message || err), 'warn');
+            }
+        }
+
+        // ---- Onboarding (calls POST /api/ad/users to create user in DB) ----
+        async function runOnboarding() {
             const name = document.getElementById('onboardName').value || 'New User';
             const dept = document.getElementById('onboardDept').value;
             const role = document.getElementById('onboardRole').value;
+            const manager = document.getElementById('onboardManager').value || '';
 
-            // Remove last prompt
+            const btn = document.querySelector('.btn-block');
+            if (btn) btn.disabled = true;
             terminal.lastElementChild?.remove();
 
-            addLine(`<span class="terminal-prompt">PS C:\\\\Scripts></span> <span class="terminal-dim">New-ADUser -Name "${name}" -Department "${dept}" -Title "${role}"</span>`);
+            addLine(`<span class="terminal-prompt">PS C:\\Scripts></span> <span class="terminal-dim">New-ADUser -Name "${name}" -Department "${dept}" -Title "${role}"</span>`);
 
             setTimeout(() => {
                 addLine(`<span class="terminal-info">[INFO]</span> Creating Active Directory account for <strong>${name}</strong>...`);
-            }, 400);
+            }, 300);
 
             setTimeout(() => {
                 addLine(`<span class="terminal-success">[OK]</span> AD user created: CN=${name.replace(/ /g, '.')},OU=${dept},DC=corp,DC=local`);
-            }, 900);
+            }, 700);
 
             setTimeout(() => {
                 addLine(`<span class="terminal-info">[INFO]</span> Assigning security groups for ${dept} department...`);
-            }, 1400);
+            }, 1100);
 
             setTimeout(() => {
                 addLine(`<span class="terminal-success">[OK]</span> Added to groups: ${dept}-Users, All-Employees, VPN-Access`);
-            }, 1900);
+            }, 1500);
 
-            setTimeout(() => {
+            setTimeout(async () => {
                 addLine(`<span class="terminal-info">[INFO]</span> Provisioning mailbox and cloud licenses...`);
-            }, 2400);
-
-            setTimeout(() => {
-                addLine(`<span class="terminal-success">[OK]</span> Exchange mailbox created. M365 E3 license assigned.`);
-            }, 2900);
-
-            setTimeout(() => {
-                addLine(`<span class="terminal-info">[INFO]</span> Sending welcome email to manager...`);
-            }, 3400);
-
-            setTimeout(() => {
-                addLine(`<span class="terminal-success">[OK]</span> Onboarding complete! Credentials sent securely.`);
-                addPrompt();
-                showToast('Onboarding Successful', `${name} has been successfully onboarded to ${dept}.`);
-
-                // Update stats
-                document.getElementById('statTotal').textContent = '1,248';
-                document.getElementById('statActive').textContent = '1,181';
-                document.getElementById('statPending').textContent = '41';
-            }, 3900);
+                try {
+                    // Actually create user in database via API
+                    const result = await apiPost('/api/ad/users', {
+                        name,
+                        department: dept,
+                        title: role,
+                        email: `${name.toLowerCase().replace(/\s+/g, '.')}@corp.local`,
+                        manager
+                    });
+                    setTimeout(() => {
+                        addLine(`<span class="terminal-success">[OK]</span> Exchange mailbox created. M365 E3 license assigned.`);
+                    }, 500);
+                    setTimeout(() => {
+                        addLine(`<span class="terminal-info">[INFO]</span> Sending welcome email to manager...`);
+                    }, 1000);
+                    setTimeout(() => {
+                        addLine(`<span class="terminal-success">[OK]</span> Onboarding complete! Credentials sent securely.`);
+                        addPrompt();
+                        showToast('Onboarding Successful', `${name} has been successfully onboarded to ${dept}.`);
+                        if (btn) btn.disabled = false;
+                        syncDirectory();
+                    }, 1500);
+                } catch (err) {
+                    addLine(`<span class="terminal-error">[ERROR]</span> Database insert failed: ${err.message}`);
+                    showToast('Onboarding Failed', err.message, 'warn');
+                    if (btn) btn.disabled = false;
+                }
+            }, 1900);
         }
 
-        // Offboarding
-        function runOffboarding() {
-            const user = document.getElementById('offboardUser').value || 'user@corp.local';
+        // ---- Offboarding (search user via API, then disable) ----
+        async function runOffboarding() {
+            const userInput = document.getElementById('offboardUser').value || '';
+            if (!userInput) {
+                showToast('Offboarding Failed', 'Please enter a username or email.', 'warn');
+                return;
+            }
 
+            const btn = document.querySelector('.btn-danger');
+            if (btn) btn.disabled = true;
             terminal.lastElementChild?.remove();
 
-            addLine(`<span class="terminal-prompt">PS C:\\\\Scripts></span> <span class="terminal-dim">Start-Offboarding -User "${user}" -Immediate</span>`);
+            addLine(`<span class="terminal-prompt">PS C:\\Scripts></span> <span class="terminal-dim">Start-Offboarding -User "${userInput}" -Immediate</span>`);
 
             setTimeout(() => {
-                addLine(`<span class="terminal-warn">[WARN]</span> Initiating offboarding for <strong>${user}</strong>...`);
+                addLine(`<span class="terminal-warn">[WARN]</span> Initiating offboarding for <strong>${userInput}</strong>...`);
             }, 400);
 
-            setTimeout(() => {
-                addLine(`<span class="terminal-info">[INFO]</span> Disabling Active Directory account...`);
+            setTimeout(async () => {
+                addLine(`<span class="terminal-info">[INFO]</span> Searching for user in directory...`);
+                try {
+                    // Find user by search
+                    const data = await apiGet(`/api/ad/users?search=${encodeURIComponent(userInput)}&limit=50`);
+                    const users = data?.users || [];
+                    const userToDisable = users[0];
+
+                    if (!userToDisable || !(userToDisable.uid ?? userToDisable.id)) {
+                        addLine(`<span class="terminal-error">[ERROR]</span> User "${userInput}" not found in directory.`);
+                        showToast('Offboarding Failed', `User "${userInput}" not found.`, 'warn');
+                        if (btn) btn.disabled = false;
+                        return;
+                    }
+
+                    const uid = userToDisable.uid ?? userToDisable.id;
+
+                    addLine(`<span class="terminal-info">[INFO]</span> Disabling Active Directory account...`);
+                    await apiPut(`/api/ad/users/${encodeURIComponent(uid)}/disable`);
+                    addLine(`<span class="terminal-success">[OK]</span> Account disabled. Sign-in blocked.`);
+
+                    setTimeout(() => {
+                        addLine(`<span class="terminal-info">[INFO]</span> Revoking Azure AD sessions and tokens...`);
+                    }, 500);
+
+                    setTimeout(() => {
+                        addLine(`<span class="terminal-success">[OK]</span> All sessions revoked. MFA reset.`);
+                    }, 1000);
+
+                    setTimeout(() => {
+                        addLine(`<span class="terminal-info">[INFO]</span> Removing from all security groups...`);
+                    }, 1500);
+
+                    setTimeout(() => {
+                        addLine(`<span class="terminal-success">[OK]</span> Removed from 14 groups. Mailbox set to shared.`);
+                    }, 2000);
+
+                    setTimeout(() => {
+                        addLine(`<span class="terminal-info">[INFO]</span> Forwarding email to manager. Data archived.`);
+                    }, 2500);
+
+                    setTimeout(() => {
+                        addLine(`<span class="terminal-success">[OK]</span> Offboarding complete. Audit log updated.`);
+                        addPrompt();
+                        showToast('Offboarding Complete', `${userInput} has been successfully offboarded.`, 'warn');
+                        if (btn) btn.disabled = false;
+                        syncDirectory();
+                    }, 3000);
+
+                } catch (err) {
+                    addLine(`<span class="terminal-error">[ERROR]</span> ${err.message}`);
+                    showToast('Offboarding Failed', err.message, 'warn');
+                    if (btn) btn.disabled = false;
+                }
             }, 800);
-
-            setTimeout(() => {
-                addLine(`<span class="terminal-success">[OK]</span> Account disabled. Sign-in blocked.`);
-            }, 1300);
-
-            setTimeout(() => {
-                addLine(`<span class="terminal-info">[INFO]</span> Revoking Azure AD sessions and tokens...`);
-            }, 1800);
-
-            setTimeout(() => {
-                addLine(`<span class="terminal-success">[OK]</span> All sessions revoked. MFA reset.`);
-            }, 2300);
-
-            setTimeout(() => {
-                addLine(`<span class="terminal-info">[INFO]</span> Removing from all security groups...`);
-            }, 2800);
-
-            setTimeout(() => {
-                addLine(`<span class="terminal-success">[OK]</span> Removed from 14 groups. Mailbox set to shared.`);
-            }, 3300);
-
-            setTimeout(() => {
-                addLine(`<span class="terminal-info">[INFO]</span> Forwarding email to manager. Data archived.`);
-            }, 3800);
-
-            setTimeout(() => {
-                addLine(`<span class="terminal-success">[OK]</span> Offboarding complete. Audit log updated.`);
-                addPrompt();
-                showToast('Offboarding Complete', `${user} has been successfully offboarded.`, 'warn');
-
-                document.getElementById('statActive').textContent = '1,180';
-                document.getElementById('statOffboard').textContent = '26';
-            }, 4300);
         }
 
         // Generate Report
@@ -993,6 +1224,16 @@
 
         // Set today's date
         document.getElementById('offboardDate').valueAsDate = new Date();
+
+        // Bind Enter key for search input
+        document.getElementById('adSearch')?.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') searchUsers();
+        });
+
+        // Auto-load users from the database on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            syncDirectory();
+        });
     </script>
 </body>
 </html>
