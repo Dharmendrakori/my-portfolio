@@ -866,8 +866,8 @@
 
             const statusToClass = (status) => {
                 const s = String(status || '').toLowerCase();
-                if (s.includes('active') || s.includes('enabled')) return 'status-active';
-                if (s.includes('pending')) return 'status-pending';
+                if (s === 'active' || s === 'enabled') return 'status-active';
+                if (s === 'pending') return 'status-pending';
                 return 'status-inactive';
             };
 
@@ -916,15 +916,15 @@
             const total = users.length;
             const activeCount = users.filter((u) => {
                 const s = String(u.status || '').toLowerCase();
-                return s.includes('active') || s.includes('enabled');
+                return s === 'active' || s === 'enabled';
             }).length;
             const pendingCount = users.filter((u) => {
                 const s = String(u.status || '').toLowerCase();
-                return s.includes('pending');
+                return s === 'pending';
             }).length;
             const offboardCount = users.filter((u) => {
                 const s = String(u.status || '').toLowerCase();
-                return s.includes('disabled') || s.includes('inactive') || s === 'disabled';
+                return s === 'disabled' || s === 'inactive' || s === 'deleted';
             }).length;
 
             document.getElementById('statTotal').textContent = total.toLocaleString();

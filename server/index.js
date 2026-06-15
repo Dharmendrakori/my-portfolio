@@ -157,7 +157,11 @@ app.post('/api/ad/users', async (req, res) => {
     if (existingCols.has('email') && email) insertFields.email = email;
     if (existingCols.has('department') && department) insertFields.department = department;
     if (existingCols.has('title') && title) insertFields.title = title;
-    if (existingCols.has('status')) insertFields.status = 'active';
+    // Use proper ENUM value for status
+    if (existingCols.has('status')) {
+      const validStatus = await findValidStatusValue(table, 'status', ['Active', 'active']);
+      insertFields.status = validStatus;
+    }
     if (existingCols.has('role') && title) insertFields.role = title;
 
     // Set a default password/manager field if columns exist
@@ -182,6 +186,30 @@ app.post('/api/ad/users', async (req, res) => {
   }
 });
 
+// Helper: find a valid status value from ENUM column
+async function findValidStatusValue(table, statusCol, candidates) {
+  try {
+    const [colInfo] = await pool.query(`SHOW COLUMNS FROM \`${table}\` WHERE Field = ?`, [statusCol]);
+    if (!colInfo || !colInfo.length || !colInfo[0].Type) {
+      // Not an ENUM, return first candidate
+      return candidates[0];
+    }
+    const typeDef = colInfo[0].Type; // e.g. "enum('Active','Inactive','Pending')"
+    const match = typeDef.match(/^enum\((.*)\)$/i);
+    if (!match) return candidates[0]; // Not an ENUM
+    const enumValues = match[1].split(',').map((v) => v.replace(/^'|'$/g, ''));
+    // Try each candidate in order
+    for (const candidate of candidates) {
+      const found = enumValues.find((ev) => ev.toLowerCase() === candidate.toLowerCase());
+      if (found) return found;
+    }
+    // Fallback: first ENUM value
+    return enumValues[0] || candidates[0];
+  } catch {
+    return candidates[0];
+  }
+}
+
 app.put('/api/ad/users/:id/disable', async (req, res) => {
   if (!hasDb) return res.status(503).json({ ok: false, error: 'DB env vars missing' });
   try {
@@ -191,7 +219,6 @@ app.put('/api/ad/users/:id/disable', async (req, res) => {
     const [colsRows] = await pool.query(`SHOW COLUMNS FROM \`${table}\``);
     const existingCols = new Set((colsRows || []).map((r) => r.Field));
 
-    // Find a status-like column and set it to disabled
     let statusCol = null;
     if (existingCols.has('status')) statusCol = 'status';
     else if (existingCols.has('enabled')) statusCol = 'enabled';
@@ -205,7 +232,13 @@ app.put('/api/ad/users/:id/disable', async (req, res) => {
       return res.status(500).json({ ok: false, error: 'No ID column found on table' });
     }
 
-    const setValue = statusCol === 'enabled' ? 0 : 'disabled';
+    // Find the correct ENUM value for disabled/inactive
+    let setValue;
+    if (statusCol === 'enabled') {
+      setValue = 0;
+    } else {
+      setValue = await findValidStatusValue(table, statusCol, ['Inactive', 'Disabled', 'disabled', 'inactive']);
+    }
     await pool.query(`UPDATE \`${table}\` SET \`${statusCol}\` = ? WHERE \`${idCol}\` = ?`, [setValue, id]);
 
     res.json({ ok: true, message: `User ${id} disabled.` });
@@ -237,7 +270,13 @@ app.put('/api/ad/users/:id/enable', async (req, res) => {
       return res.status(500).json({ ok: false, error: 'No ID column found on table' });
     }
 
-    const setValue = statusCol === 'enabled' ? 1 : 'active';
+    // Find the correct ENUM value for active
+    let setValue;
+    if (statusCol === 'enabled') {
+      setValue = 1;
+    } else {
+      setValue = await findValidStatusValue(table, statusCol, ['Active', 'active', 'Enabled']);
+    }
     await pool.query(`UPDATE \`${table}\` SET \`${statusCol}\` = ? WHERE \`${idCol}\` = ?`, [setValue, id]);
 
     res.json({ ok: true, message: `User ${id} enabled.` });
