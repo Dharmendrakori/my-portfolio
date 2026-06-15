@@ -6,7 +6,10 @@ import { fileURLToPath } from 'url';
 // Ensure we load the correct .env file from the server/ directory.
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-dotenv.config({ path: path.join(__dirname, '.env') });
+
+if (process.env.NODE_ENV !== 'production') {
+  dotenv.config({ path: path.join(__dirname, '.env') });
+}
 
 import express from 'express';
 
@@ -50,9 +53,9 @@ const pool = mysql.createPool({
 
 function pickStatusColor(status) {
   const s = String(status || '').toLowerCase();
-  if (s.includes('active') || s === 'enabled') return 'active';
-  if (s.includes('disabled') || s.includes('inactive') || s === 'disabled') return 'inactive';
-  if (s.includes('pending')) return 'pending';
+  if (s === 'inactive' || s === 'disabled' || s === 'deleted') return 'inactive';
+  if (s === 'pending') return 'pending';
+  if (s === 'active' || s === 'enabled') return 'active';
   return 'inactive';
 }
 
