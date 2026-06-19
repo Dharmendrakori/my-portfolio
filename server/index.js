@@ -454,10 +454,11 @@ app.post('/api/contact', async (req, res) => {
   const endpoint = process.env.FORMSPREE_ENDPOINT;
   if (!endpoint) return res.status(500).json({ ok: false, error: 'FORMSPREE_ENDPOINT is not configured' });
 
-  const { name, email, message } = req.body || {};
+  const { name, email, subject, message } = req.body || {};
 
   const nameStr = String(name || '').trim();
   const emailStr = String(email || '').trim();
+  const subjectStr = String(subject || '').trim();
   const messageStr = String(message || '').trim();
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -465,6 +466,9 @@ app.post('/api/contact', async (req, res) => {
   if (!nameStr) return res.status(400).json({ ok: false, error: 'name is required' });
   if (!emailStr || !emailRegex.test(emailStr)) return res.status(400).json({ ok: false, error: 'A valid email is required' });
   if (!messageStr || messageStr.length < 10) return res.status(400).json({ ok: false, error: 'message must be at least 10 characters' });
+
+  // Subject is optional on the server side (but we validate it if present)
+  const finalSubject = subjectStr ? subjectStr : 'No subject';
 
   try {
 
@@ -479,6 +483,7 @@ app.post('/api/contact', async (req, res) => {
       body: JSON.stringify({
         name: nameStr,
         email: emailStr,
+        subject: finalSubject,
         message: messageStr
       })
     });
