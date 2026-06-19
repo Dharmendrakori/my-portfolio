@@ -20,23 +20,6 @@ import mysql from 'mysql2/promise';
 const app = express();
 
 
-const corsOptions = {
-  origin: function (origin, callback) {
-    // Allow requests without an Origin (like mobile apps, curl, server-to-server)
-
-    if (!origin) return callback(null, true);
-    if (!allowedOrigin) return callback(new Error('ALLOWED_ORIGIN is not configured'));
-    if (origin === allowedOrigin) return callback(null, true);
-    return callback(new Error('Not allowed by CORS'));
-  },
-  credentials: false
-};
-
-app.use(cors(corsOptions));
-app.use(express.json({ limit: '1mb' }));
-
-
-
 const {
   AIVEN_DB_HOST,
   AIVEN_DB_PORT,
@@ -52,10 +35,49 @@ const {
   ALLOWED_ORIGIN
 } = process.env;
 
+const allowedOrigin = ALLOWED_ORIGIN;
+
+if (!allowedOrigin) {
+  // Startup error (but do NOT throw). Throwing here can cascade into 500s.
+  console.error('[CORS] ALLOWED_ORIGIN is missing. Set ALLOWED_ORIGIN to https://dharmendrakori.github.io (or your GitHub Pages origin).');
+}
+
+const corsOptions = {
+  origin: function (origin, callback) {
+    console.log('Origin:', origin);
+    console.log('ALLOWED_ORIGIN:', process.env.ALLOWED_ORIGIN);
+
+    // Allow requests without an Origin (like mobile apps, curl, server-to-server)
+    if (!origin) return callback(null, true);
+
+    // If not configured, do not hard-fail preflight with a 500.
+    // We let CORS middleware decide; for explicit origin mismatch we simply disallow.
+    if (!allowedOrigin) return callback(null, false);
+
+    if (origin === allowedOrigin) return callback(null, true);
+
+    return callback(null, false);
+  },
+  credentials: false,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Accept', 'Authorization'],
+  optionsSuccessStatus: 204
+};
+
+// Explicit preflight handling so OPTIONS never 500s.
+app.options('*', cors(corsOptions));
+
+app.use(cors(corsOptions));
+app.use(express.json({ limit: '1mb' }));
+
+
+
+
 
 if (!AIVEN_DB_HOST || !AIVEN_DB_USER || !AIVEN_DB_PASSWORD || !AIVEN_DB_NAME) {
   console.warn('Missing DB env vars. Please copy server/.env.example to server/.env and set connection values.');
 }
+
 
 // Fail fast if env is missing; avoids hanging/500s later.
 const hasDb = Boolean(AIVEN_DB_HOST && AIVEN_DB_USER && AIVEN_DB_PASSWORD && AIVEN_DB_NAME);
@@ -419,6 +441,13 @@ app.post('/api/ad/health-check/scan', async (req, res) => {
     console.error('[AD Health Check] Scan error:', err);
     res.status(500).json({ ok: false, error: err?.message || 'Server error' });
   }
+});
+
+app.get('/api/cors-test', (req, res) => {
+  res.json({
+    ok: true,
+    origin: req.headers.origin || null
+  });
 });
 
 app.post('/api/contact', async (req, res) => {
