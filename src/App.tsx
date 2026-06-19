@@ -1,7 +1,9 @@
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import DhcpHealthCheckPage from './pages/DhcpHealthCheckPage';
+import AdDomainControllerTimeSyncDashboardPage from './pages/AdDomainControllerTimeSyncDashboardPage';
 import './App.css';
+
 
 function HomePage() {
   const cards = [
@@ -14,7 +16,17 @@ function HomePage() {
       border: 'border-emerald-500/40',
       icon: '🖧',
     },
+    {
+      title: 'AD Domain Controller Time Synchronization Monitor',
+      description:
+        'Monitor NTP sync health, clock drift, stratum distribution, NTP sources, Kerberos risk, and active alerts for Active Directory domain controllers.',
+      to: '/ad-time-sync-dashboard',
+      accent: 'from-blue-500/20 to-blue-500/5',
+      border: 'border-blue-500/40',
+      icon: '⏱️',
+    },
   ];
+
 
   return (
     <div className="min-h-screen bg-[#050b14] p-6 text-gray-100">
@@ -63,6 +75,8 @@ function App() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/dhcp-health-check" element={<DhcpHealthCheckPage />} />
+        <Route path="/ad-time-sync-dashboard" element={<AdDomainControllerTimeSyncDashboardPage />} />
+
       </Routes>
     </BrowserRouter>
   );

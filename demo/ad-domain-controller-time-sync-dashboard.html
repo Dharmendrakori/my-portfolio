@@ -1,0 +1,1635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="../public/favicon-config.js"></script>
+  <title>AD Domain Controller Time Synchronization Monitor</title>
+
+  <!-- Chart.js for dashboard charts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+
+  <!-- Matrix Rain Canvas (matches homepage style) -->
+  <canvas id="matrix-canvas"></canvas>
+
+  <style>
+    /* ============================================================
+       CSS Variable Definitions — Enterprise Theme + Matrix
+       ============================================================ */
+    :root {
+      --matrix-green: #00ff41;
+      --matrix-dark: #003b00;
+      --matrix-dim: #008f11;
+      --bg-primary: #0b0e17;
+      --bg-secondary: #131724;
+      --bg-card: rgba(10, 20, 10, 0.85);
+      --bg-card-hover: #1f2740;
+      --border-color: rgba(0, 255, 65, 0.15);
+      --text-primary: #e8edf5;
+      --text-secondary: #8b95b5;
+      --text-muted: #5a6488;
+      --accent-green: #00c853;
+      --accent-green-bg: rgba(0, 200, 83, 0.12);
+      --accent-red: #ff1744;
+      --accent-red-bg: rgba(255, 23, 68, 0.12);
+      --accent-orange: #ff9100;
+      --accent-orange-bg: rgba(255, 145, 0, 0.12);
+      --accent-blue: #2979ff;
+      --accent-blue-bg: rgba(41, 121, 255, 0.12);
+      --shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+      --radius: 10px;
+      --radius-sm: 6px;
+      --transition: all 0.2s ease;
+      --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* Matrix Rain Canvas */
+    #matrix-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      opacity: 0.35;
+      pointer-events: none;
+    }
+
+    .dashboard-container { position: relative; z-index: 1; }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-secondary); }
+    ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+    /* Layout */
+    .dashboard-container {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 24px 20px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Header */
+    .dashboard-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-bottom: 22px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .header-left h1 {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #fff 60%, var(--accent-blue));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .header-left .subtitle {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+
+    .header-right { text-align: right; }
+
+    .header-right .current-time {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .header-right .current-date {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-top: 10px;
+      justify-content: flex-end;
+    }
+
+    .btn-refresh {
+      background: var(--accent-blue-bg);
+      color: var(--accent-blue);
+      border: 1px solid rgba(41, 121, 255, 0.3);
+      padding: 8px 18px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      transition: var(--transition);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-refresh:hover { background: rgba(41, 121, 255, 0.2); border-color: var(--accent-blue); }
+    .btn-refresh.loading { opacity: 0.6; pointer-events: none; }
+
+    .subtle-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-color);
+      background: rgba(255,255,255,0.02);
+      color: var(--text-secondary);
+      font-size: 12px;
+      margin-top: 10px;
+      user-select: none;
+      white-space: nowrap;
+    }
+
+    /* Summary */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 26px;
+    }
+
+    .summary-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+      transition: var(--transition);
+      position: relative;
+      overflow: hidden;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .summary-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+    }
+
+    .summary-card.total::before { background: var(--accent-blue); }
+    .summary-card.healthy::before { background: var(--accent-green); }
+    .summary-card.warning::before { background: var(--accent-orange); }
+    .summary-card.critical::before { background: var(--accent-red); }
+
+    .summary-card:hover { background: var(--bg-card-hover); transform: translateY(-2px); }
+    .summary-card.selected { box-shadow: 0 0 0 2px rgba(41,121,255,0.35), var(--shadow); }
+
+    .summary-card .card-icon { font-size: 24px; margin-bottom: 8px; display: inline-block; }
+
+    .summary-card .card-label {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-secondary);
+      margin-bottom: 4px;
+    }
+
+    .summary-card .card-value {
+      font-size: 32px;
+      font-weight: 700;
+      line-height: 1.2;
+      letter-spacing: -0.2px;
+    }
+
+    .summary-card.total .card-value { color: var(--accent-blue); }
+    .summary-card.healthy .card-value { color: var(--accent-green); }
+    .summary-card.warning .card-value { color: var(--accent-orange); }
+    .summary-card.critical .card-value { color: var(--accent-red); }
+
+    /* Charts */
+    .charts-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; margin-bottom: 22px; }
+    .charts-grid.single { grid-template-columns: 1fr; }
+
+    .chart-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .chart-card h3 {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .chart-wrapper { position: relative; width: 100%; max-height: 320px; }
+    .chart-wrapper canvas { max-height: 320px; }
+
+    /* Tables */
+    .table-section {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      margin-bottom: 18px;
+    }
+
+    .table-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .toolbar-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      width: 100%;
+    }
+
+    .table-toolbar .toolbar-right { font-size: 13px; color: var(--text-secondary); }
+
+    .search-input {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      padding: 8px 14px;
+      color: var(--text-primary);
+      font-size: 13px;
+      width: 220px;
+      transition: var(--transition);
+      outline: none;
+    }
+
+    .search-input:focus { border-color: var(--accent-blue); box-shadow: 0 0 0 2px rgba(41, 121, 255, 0.2); }
+    .search-input::placeholder { color: var(--text-muted); }
+
+    .filter-select {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      padding: 8px 14px;
+      color: var(--text-primary);
+      font-size: 13px;
+      outline: none;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .filter-select:focus { border-color: var(--accent-blue); }
+
+    .table-wrapper { overflow-x: auto; padding: 0; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead { background: var(--bg-secondary); }
+
+    thead th {
+      padding: 12px 14px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      cursor: pointer;
+      user-select: none;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    thead th:hover { color: var(--text-primary); }
+
+    tbody tr { border-bottom: 1px solid var(--border-color); transition: var(--transition); }
+    tbody tr:hover { background: rgba(41, 121, 255, 0.05); }
+
+    tbody td { padding: 10px 14px; white-space: nowrap; vertical-align: middle; }
+    tbody td:first-child { font-weight: 600; color: var(--accent-blue); }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+      user-select: none;
+    }
+
+    .status-badge.healthy { background: var(--accent-green-bg); color: var(--accent-green); }
+    .status-badge.warning { background: var(--accent-orange-bg); color: var(--accent-orange); }
+    .status-badge.critical { background: var(--accent-red-bg); color: var(--accent-red); }
+
+    .priority-row { background: rgba(255, 23, 68, 0.09); border-bottom-color: rgba(255,23,68,0.25) !important; }
+
+    .priority-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--accent-red);
+      box-shadow: 0 0 0 3px rgba(255,23,68,0.15);
+      margin-right: 8px;
+    }
+
+    /* Pagination */
+    .pagination-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: 14px 20px;
+      border-top: 1px solid var(--border-color);
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .pagination-controls { display: flex; gap: 4px; flex-wrap: wrap; }
+
+    .page-btn {
+      background: transparent;
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      padding: 6px 12px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      font-size: 13px;
+      transition: var(--transition);
+      min-width: 36px;
+      text-align: center;
+      user-select: none;
+    }
+
+    .page-btn:hover { background: var(--bg-card-hover); color: var(--text-primary); }
+    .page-btn.active { background: var(--accent-blue); border-color: var(--accent-blue); color: #fff; }
+    .page-btn:disabled { opacity: 0.3; cursor: not-allowed; pointer-events: none; }
+
+    /* Loading/Empty/Error */
+    .loading-overlay {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 80px 20px;
+      gap: 16px;
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid var(--border-color);
+      border-top-color: var(--accent-blue);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .error-state { text-align: center; padding: 60px 20px; }
+    .error-state .error-icon { font-size: 40px; margin-bottom: 12px; }
+    .error-state h3 { color: var(--accent-red); margin-bottom: 8px; }
+    .error-state p { color: var(--text-secondary); font-size: 14px; }
+
+    .empty-state { text-align: center; padding: 60px 20px; }
+    .empty-state .empty-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.5; }
+    .empty-state h3 { font-size: 20px; margin-bottom: 8px; color: var(--text-secondary); }
+    .empty-state p { color: var(--text-muted); font-size: 14px; }
+
+    /* Smooth transitions */
+    .fade-in { animation: fadeIn 0.25s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* Responsive */
+    @media (max-width: 1024px) {
+      .charts-grid { grid-template-columns: 1fr; }
+      .charts-grid.single { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 768px) {
+      .dashboard-container { padding: 16px 12px; }
+      .dashboard-header { flex-direction: column; align-items: stretch; gap: 12px; }
+      .header-right { text-align: left; }
+      .summary-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+      .search-input { width: 100%; }
+      .toolbar-left { flex-direction: column; align-items: stretch; }
+      .filter-select { width: 100%; }
+      .pagination-bar { flex-direction: column; align-items: center; }
+    }
+
+    @media (max-width: 480px) {
+      .summary-grid { grid-template-columns: repeat(1, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <div class="dashboard-container">
+
+    <header class="dashboard-header">
+      <div class="header-left">
+        <h1>⏱️ AD Domain Controller Time Synchronization Monitor</h1>
+        <p class="subtitle">NTP sync health • clock drift analysis • Kerberos risk • active alerts</p>
+      </div>
+
+      <div class="header-right">
+        <div class="current-time" id="currentTime">--:--:--</div>
+        <div class="current-date" id="currentDate">---</div>
+
+        <div class="header-actions">
+          <button class="btn-refresh" id="refreshBtn" onclick="loadData(true)">⟳ Refresh Data</button>
+        </div>
+
+        <div class="subtle-pill" id="lastUpdated">Last updated: --</div>
+      </div>
+    </header>
+
+    <!-- 1) Executive Summary Row (6 KPI cards) -->
+    <section class="summary-grid" id="summaryCards">
+      <div class="summary-card total" data-drill="all" onclick="setDrilldown('all')">
+        <div class="card-icon">🖥️</div>
+        <div class="card-label">Total Domain Controllers</div>
+        <div class="card-value" id="kpiTotal">--</div>
+      </div>
+
+      <div class="summary-card healthy" data-drill="Healthy" onclick="setDrilldown('Healthy')">
+        <div class="card-icon">✅</div>
+        <div class="card-label">Healthy Controllers</div>
+        <div class="card-value" id="kpiHealthy">--</div>
+      </div>
+
+      <div class="summary-card warning" data-drill="Warning" onclick="setDrilldown('Warning')">
+        <div class="card-icon">⚠️</div>
+        <div class="card-label">Warning Controllers</div>
+        <div class="card-value" id="kpiWarning">--</div>
+      </div>
+
+      <div class="summary-card critical" data-drill="Critical" onclick="setDrilldown('Critical')">
+        <div class="card-icon">🔴</div>
+        <div class="card-label">Critical Controllers</div>
+        <div class="card-value" id="kpiCritical">--</div>
+      </div>
+
+      <div class="summary-card util" data-drill="all" onclick="setDrilldown('all')">
+        <div class="card-icon">📉</div>
+        <div class="card-label">Average Clock Drift (ms)</div>
+        <div class="card-value" id="kpiAvgDrift">--</div>
+      </div>
+
+      <div class="summary-card util" data-drill="all" onclick="setDrilldown('all')">
+        <div class="card-icon">🧠</div>
+        <div class="card-label">Average Health Score</div>
+        <div class="card-value" id="kpiAvgHealth">--</div>
+      </div>
+    </section>
+
+    <!-- 2) Synchronization Health Overview -->
+    <section class="charts-grid" id="syncOverview">
+      <div class="chart-card">
+        <h3>🍩 Synchronization Health Overview</h3>
+        <div class="chart-wrapper">
+          <canvas id="donutSync"></canvas>
+        </div>
+      </div>
+
+      <!-- 3) Clock Drift Analysis -->
+      <div class="chart-card">
+        <h3>📈 Clock Drift Analysis (Top 10 by drift)</h3>
+        <div class="chart-wrapper">
+          <canvas id="driftBar"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4) Health Score Analysis -->
+    <section class="charts-grid single" id="healthScoreGrid">
+      <div class="chart-card">
+        <h3>📊 Health Score Analysis (by DC)</h3>
+        <div class="chart-wrapper">
+          <canvas id="healthScoreBar"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5) Stratum Distribution -->
+    <!-- 6) NTP Source Analysis -->
+    <section class="charts-grid" id="distGrid">
+      <div class="chart-card">
+        <h3>🧭 Stratum Distribution</h3>
+        <div class="chart-wrapper">
+          <canvas id="stratumChart"></canvas>
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <h3>📡 NTP Source Analysis</h3>
+        <div class="chart-wrapper">
+          <canvas id="ntpChart"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7) Kerberos Risk Panel -->
+    <section class="table-section" id="kerberosRiskSection">
+      <div class="table-toolbar">
+        <div class="toolbar-left">
+          <div>
+            <h3 style="font-size:15px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;">🔒 Kerberos Risk Panel</h3>
+          </div>
+          <div class="toolbar-right" style="font-size:13px;color:var(--text-secondary);">
+            Showing records where <b>kerberos_safe = false</b>
+          </div>
+        </div>
+        <div class="toolbar-right" id="kerberosCount">0 items</div>
+      </div>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>DC Name</th>
+              <th>Clock Drift</th>
+              <th>Health Score</th>
+              <th>Last Sync Time</th>
+            </tr>
+          </thead>
+          <tbody id="kerberosBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 8) Active Alerts -->
+    <section class="table-section" id="alertsSection">
+      <div class="table-toolbar">
+        <div class="toolbar-left">
+          <input type="text" class="search-input" id="alertsSearch" placeholder="🔍 Search alerts..." oninput="filterAndRenderAlerts()" />
+          <select class="filter-select" id="alertsSeverity" onchange="filterAndRenderAlerts()">
+            <option value="all">All Severities</option>
+            <option value="low">low</option>
+            <option value="medium">medium</option>
+            <option value="high">high</option>
+            <option value="critical">critical</option>
+          </select>
+          <select class="filter-select" id="alertsSort" onchange="filterAndRenderAlerts()">
+            <option value="detected_at_desc">Detected: newest</option>
+            <option value="detected_at_asc">Detected: oldest</option>
+            <option value="severity_desc">Severity: high</option>
+          </select>
+        </div>
+        <div class="toolbar-right" id="alertsCount">0 active alerts</div>
+      </div>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>DC Name</th>
+              <th>Alert Type</th>
+              <th>Severity</th>
+              <th>Alert Message</th>
+              <th>Detected At</th>
+            </tr>
+          </thead>
+          <tbody id="alertsBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 9) Domain Controller Inventory -->
+    <section class="table-section" id="inventorySection">
+      <div class="table-toolbar">
+        <div class="toolbar-left">
+          <input type="text" class="search-input" id="inventorySearch" placeholder="🔍 Search controllers..." oninput="filterAndRenderInventory()" />
+          <select class="filter-select" id="inventorySyncFilter" onchange="filterAndRenderInventory()">
+            <option value="all">All Sync States</option>
+            <option value="Healthy">Healthy</option>
+            <option value="Warning">Warning</option>
+            <option value="Critical">Critical</option>
+          </select>
+          <select class="filter-select" id="inventorySort" onchange="filterAndRenderInventory()">
+            <option value="health_desc">Health: high</option>
+            <option value="drift_desc">Clock drift: high</option>
+            <option value="drift_asc">Clock drift: low</option>
+            <option value="name_asc">DC name: A-Z</option>
+          </select>
+        </div>
+
+        <div class="toolbar-right" style="display:flex;align-items:center;gap:10px;">
+          <button class="btn-refresh" id="exportCsvBtn" onclick="exportCsv()">⬇️ Export CSV</button>
+          <span id="inventoryCount">0 records</span>
+        </div>
+      </div>
+
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>DC Name</th>
+              <th>Site</th>
+              <th>Domain</th>
+              <th>NTP Source</th>
+              <th>Stratum</th>
+              <th>Sync Status</th>
+              <th>Clock Drift</th>
+              <th>Offset</th>
+              <th>Last Sync</th>
+              <th>Health Score</th>
+            </tr>
+          </thead>
+          <tbody id="inventoryBody"></tbody>
+        </table>
+      </div>
+
+      <div class="pagination-bar">
+        <div>
+          Showing <span id="pageStart">0</span>–<span id="pageEnd">0</span> of <span id="totalRecords">0</span>
+        </div>
+        <div class="pagination-controls" id="paginationControls"></div>
+      </div>
+    </section>
+
+  </div>
+
+  <script>
+    // ============================================================
+    // State
+    // ============================================================
+    const API_BASE = 'https://portfolio-api-3sx8.onrender.com';
+    const REFRESH_MS = 60 * 1000;
+
+    let allStatus = [];
+    let allAlerts = [];
+
+    let drillSync = 'all'; // all | Healthy | Warning | Critical
+
+    let inventoryState = {
+      search: '',
+      syncFilter: 'all',
+      sortKey: 'health_desc',
+      page: 1,
+      pageSize: 10,
+    };
+
+    // Chart instances
+    let donutSyncChart = null;
+    let driftBarChart = null;
+    let healthScoreBarChart = null;
+    let stratumChart = null;
+    let ntpChart = null;
+
+    // ============================================================
+    // Clock
+    // ============================================================
+    function updateClock() {
+      const now = new Date();
+      document.getElementById('currentTime').textContent =
+        now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      document.getElementById('currentDate').textContent =
+        now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    }
+    updateClock();
+    setInterval(updateClock, 1000);
+
+    // ============================================================
+    // Utilities
+    // ============================================================
+    function escHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str == null ? '' : String(str);
+      return div.innerHTML;
+    }
+
+    function safeNum(v, fallback = 0) {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : fallback;
+    }
+
+    function toLocalString(val) {
+      if (!val) return '—';
+      const d = new Date(val);
+      if (isNaN(d.getTime())) return String(val);
+      return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    }
+
+    function severityRank(sev) {
+      const s = String(sev || '').toLowerCase();
+      if (s === 'critical') return 4;
+      if (s === 'high') return 3;
+      if (s === 'medium') return 2;
+      if (s === 'low') return 1;
+      return 0;
+    }
+
+    function classifySyncStatus(syncStatus) {
+      const s = String(syncStatus || '').toLowerCase();
+      if (s === 'critical' || s.includes('critical')) return 'Critical';
+      if (s === 'warning' || s.includes('warning')) return 'Warning';
+      if (s === 'healthy' || s.includes('healthy') || s.includes('ok')) return 'Healthy';
+      if (s === 'true') return 'Healthy';
+      return 'Warning';
+    }
+
+    function setSelectedKpi(which) {
+      document.querySelectorAll('.summary-card').forEach(el => el.classList.remove('selected'));
+      const card = document.querySelector('.summary-card[data-drill="' + which + '"]');
+      if (card) card.classList.add('selected');
+    }
+
+    function getFilteredStatus() {
+      if (drillSync === 'all') return allStatus;
+      return allStatus.filter(r => classifySyncStatus(r.sync_status) === drillSync);
+    }
+
+    // ============================================================
+    // Sample Data (fallback)
+    // ============================================================
+    function sampleStatusData() {
+      const now = Date.now();
+      const d = (minsAgo) => new Date(now - minsAgo * 60 * 1000).toISOString();
+      const names = ['DC-01','DC-02','DC-03','DC-04','DC-05','DC-06','DC-07','DC-08','DC-09','DC-10','DC-11','DC-12'];
+      const domains = ['corp.example.com','lab.example.com','sales.example.com'];
+      const sites = ['HQ','BranchA','BranchB'];
+      const ntp = ['time.windows.com','pool.ntp.org','10.0.0.5','10.0.1.20','time.google.com'];
+
+      return names.map((dc, idx) => {
+        const stratum = [1,2,2,3,4][idx % 5];
+        const drift = [5, 12, 18, -8, 32, 55, -25, 8, 71, -15, 24, 90][idx % 12];
+        const offset = [2, -4, 7, -11, 19, -22, 3, 0, 15, -3, 9, -18][idx % 12];
+        const healthScore = Math.max(1, Math.min(100, Math.round(100 - Math.abs(drift) * 0.9 - stratum * 3)));
+
+        const syncStatus = drift == 0 ? 'Healthy' : Math.abs(drift) < 20 ? 'Healthy' : Math.abs(drift) < 50 ? 'Warning' : 'Critical';
+        const kerberosSafe = syncStatus !== 'Critical';
+
+        return {
+          id: idx + 1,
+          dc_name: dc,
+          site_name: sites[idx % sites.length],
+          domain_name: domains[idx % domains.length],
+          ntp_source: ntp[idx % ntp.length],
+          stratum_level: stratum,
+          sync_status: syncStatus,
+          clock_drift_ms: drift,
+          offset_ms: offset,
+          last_sync_time: d(10 + idx * 7),
+          kerberos_safe: kerberosSafe,
+          health_score: healthScore,
+          checked_at: d(2 + idx * 3),
+        };
+      });
+    }
+
+    function sampleAlertsData() {
+      const now = Date.now();
+      const d = (minsAgo) => new Date(now - minsAgo * 60 * 1000).toISOString();
+      return [
+        { alert_id: 101, dc_name: 'DC-05', alert_type: 'Clock Drift High', severity: 'high', alert_message: 'Clock drift exceeded 50ms threshold.', detected_at: d(35), resolved: false, resolved_at: null },
+        { alert_id: 102, dc_name: 'DC-09', alert_type: 'Stratum Degraded', severity: 'medium', alert_message: 'NTP stratum increased beyond expected range.', detected_at: d(70), resolved: false, resolved_at: null },
+        { alert_id: 103, dc_name: 'DC-10', alert_type: 'Kerberos Risk', severity: 'critical', alert_message: 'kerberos_safe=false detected; investigate NTP sync immediately.', detected_at: d(15), resolved: false, resolved_at: null },
+      ];
+    }
+
+    // ============================================================
+    // Render API fetch (fallback to sample)
+    // ============================================================
+    async function fetchRenderStatus() {
+      const candidates = [
+        `${API_BASE}/api/ad/dc-time-sync-status`,
+        `${API_BASE}/api/ad/dc-time-sync`,
+        `${API_BASE}/api/ad/time-sync-status`,
+        `${API_BASE}/api/ad/time-sync`,
+      ];
+
+      for (const url of candidates) {
+        try {
+          const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+          if (!res.ok) continue;
+          const json = await res.json();
+          const records = json.records || json.data || json || [];
+          if (Array.isArray(records)) return records;
+        } catch (e) {}
+      }
+      throw new Error('No compatible dc_time_sync_status endpoint found (yet).');
+    }
+
+    async function fetchRenderAlerts() {
+      const candidates = [
+        `${API_BASE}/api/ad/dc-time-sync-alerts`,
+        `${API_BASE}/api/ad/dc-time-sync`,
+        `${API_BASE}/api/ad/time-sync-alerts`,
+        `${API_BASE}/api/ad/time-sync`,
+      ];
+
+      for (const url of candidates) {
+        try {
+          const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+          if (!res.ok) continue;
+          const json = await res.json();
+          const records = json.records || json.data || json || [];
+          if (Array.isArray(records)) return records;
+        } catch (e) {}
+      }
+      throw new Error('No compatible dc_time_sync_alerts endpoint found (yet).');
+    }
+
+    // ============================================================
+    // Rendering: KPI
+    // ============================================================
+    function renderSummary(statusRecords) {
+      const total = statusRecords.length;
+      let healthy = 0, warning = 0, critical = 0;
+      let driftSum = 0;
+      let driftCount = 0;
+      let healthSum = 0;
+
+      for (const r of statusRecords) {
+        const cls = classifySyncStatus(r.sync_status);
+        if (cls === 'Healthy') healthy++;
+        else if (cls === 'Warning') warning++;
+        else critical++;
+
+        driftSum += safeNum(r.clock_drift_ms, 0);
+        driftCount++;
+        healthSum += safeNum(r.health_score, 0);
+      }
+
+      const avgDrift = driftCount ? driftSum / driftCount : 0;
+      const avgHealth = total ? healthSum / total : 0;
+
+      document.getElementById('kpiTotal').textContent = total;
+      document.getElementById('kpiHealthy').textContent = healthy;
+      document.getElementById('kpiWarning').textContent = warning;
+      document.getElementById('kpiCritical').textContent = critical;
+      document.getElementById('kpiAvgDrift').textContent = `${Math.round(avgDrift)} ms`;
+      document.getElementById('kpiAvgHealth').textContent = `${Math.round(avgHealth)} / 100`;
+    }
+
+    // ============================================================
+    // Rendering: Charts
+    // ============================================================
+    function chartColors() {
+      const cs = getComputedStyle(document.documentElement);
+      return {
+        healthy: cs.getPropertyValue('--accent-green').trim() || '#00c853',
+        warning: cs.getPropertyValue('--accent-orange').trim() || '#ff9100',
+        critical: cs.getPropertyValue('--accent-red').trim() || '#ff1744',
+        textSecondary: cs.getPropertyValue('--text-secondary').trim() || '#8b95b5',
+        textMuted: cs.getPropertyValue('--text-muted').trim() || '#5a6488',
+        accentBlue: cs.getPropertyValue('--accent-blue').trim() || '#2979ff'
+      };
+    }
+
+    function renderCharts(statusRecords) {
+      const colors = chartColors();
+
+      let healthy = 0, warning = 0, critical = 0;
+      const driftTop = [];
+      const healthByDc = [];
+      const stratumCounts = {};
+      const ntpCounts = {};
+
+      for (const r of statusRecords) {
+        const cls = classifySyncStatus(r.sync_status);
+        if (cls === 'Healthy') healthy++;
+        else if (cls === 'Warning') warning++;
+        else critical++;
+
+        driftTop.push({ dc: r.dc_name || 'Unknown', drift: safeNum(r.clock_drift_ms, 0) });
+        healthByDc.push({ dc: r.dc_name || 'Unknown', score: safeNum(r.health_score, 0) });
+
+        const s = String(r.stratum_level ?? 'Unknown');
+        stratumCounts[s] = (stratumCounts[s] || 0) + 1;
+
+        const ntp = String(r.ntp_source ?? 'Unknown');
+        ntpCounts[ntp] = (ntpCounts[ntp] || 0) + 1;
+      }
+
+      // Donut
+      if (donutSyncChart) donutSyncChart.destroy();
+      donutSyncChart = new Chart(document.getElementById('donutSync').getContext('2d'), {
+        type: 'doughnut',
+        data: {
+          labels: ['Healthy', 'Warning', 'Critical'],
+          datasets: [{
+            data: [healthy, warning, critical],
+            backgroundColor: [colors.healthy, colors.warning, colors.critical],
+            borderWidth: 0,
+            hoverOffset: 8,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          cutout: '65%',
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { color: colors.textSecondary, font: { size: 12 }, padding: 16 }
+            },
+            tooltip: {
+              backgroundColor: '#0b1220',
+              borderColor: 'rgba(255,255,255,0.1)',
+              borderWidth: 1,
+              callbacks: {
+                label: (ctx) => `${ctx.label}: ${ctx.parsed}`
+              }
+            }
+          }
+        }
+      });
+
+      document.getElementById('donutSync').onclick = (evt) => {
+        const points = donutSyncChart?.getElementsAtEventForMode?.(evt, 'nearest', { intersect: true }, true);
+        if (!points || !points.length) return;
+        const idx = points[0].index;
+        const next = idx === 0 ? 'Healthy' : idx === 1 ? 'Warning' : 'Critical';
+        setDrilldown(next);
+      };
+
+      // Drift bar top 10
+      if (driftBarChart) driftBarChart.destroy();
+      const top10 = driftTop
+        .slice()
+        .sort((a, b) => Math.abs(b.drift) - Math.abs(a.drift))
+        .slice(0, 10);
+
+      driftBarChart = new Chart(document.getElementById('driftBar').getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: top10.map(x => x.dc),
+          datasets: [{
+            label: 'clock_drift_ms',
+            data: top10.map(x => x.drift),
+            backgroundColor: top10.map(x => Math.abs(x.drift) < 20 ? colors.healthy : Math.abs(x.drift) < 50 ? colors.warning : colors.critical),
+            borderRadius: 4,
+            borderSkipped: false,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          indexAxis: 'y',
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: '#0b1220',
+              borderColor: 'rgba(255,255,255,0.1)',
+              borderWidth: 1,
+              callbacks: {
+                title: (items) => items?.[0]?.label || '',
+                label: (ctx) => `clock_drift_ms: ${ctx.parsed.x} ms`
+              }
+            }
+          },
+          scales: {
+            x: { grid: { color: 'rgba(42, 50, 80, 0.5)' }, ticks: { color: colors.textMuted, font: { size: 11 } } },
+            y: { grid: { display: false }, ticks: { color: colors.textSecondary, font: { size: 11 } } }
+          }
+        }
+      });
+
+      // Health score by DC
+      if (healthScoreBarChart) healthScoreBarChart.destroy();
+      const healthSorted = healthByDc.slice().sort((a, b) => b.score - a.score).slice(0, 12);
+      healthScoreBarChart = new Chart(document.getElementById('healthScoreBar').getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: healthSorted.map(x => x.dc),
+          datasets: [{
+            label: 'health_score',
+            data: healthSorted.map(x => x.score),
+            backgroundColor: healthSorted.map(x => x.score >= 90 ? colors.healthy : x.score >= 70 ? colors.warning : colors.critical),
+            borderRadius: 4,
+            borderSkipped: false,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: '#0b1220',
+              borderColor: 'rgba(255,255,255,0.1)',
+              borderWidth: 1,
+            }
+          },
+          scales: {
+            y: { beginAtZero: true, max: 100, ticks: { color: colors.textMuted, font: { size: 11 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
+            x: { ticks: { color: colors.textSecondary, font: { size: 11 } }, grid: { display: false } }
+          }
+        }
+      });
+
+      // Stratum distribution
+      if (stratumChart) stratumChart.destroy();
+      const stratumLabels = Object.keys(stratumCounts).sort((a, b) => safeNum(stratumCounts[b]) - safeNum(stratumCounts[a]));
+      const stratumValues = stratumLabels.map(k => stratumCounts[k]);
+
+      stratumChart = new Chart(document.getElementById('stratumChart').getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: stratumLabels,
+          datasets: [{
+            label: 'controllers',
+            data: stratumValues,
+            backgroundColor: stratumLabels.map((_, i) => [colors.accentBlue, colors.healthy, colors.warning, colors.critical][i % 4]),
+            borderRadius: 4,
+            borderSkipped: false,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          plugins: {
+            legend: { display: false },
+            tooltip: { backgroundColor: '#0b1220', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1 }
+          },
+          scales: {
+            y: { beginAtZero: true, ticks: { color: colors.textMuted, font: { size: 11 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
+            x: { ticks: { color: colors.textSecondary, font: { size: 11 } }, grid: { display: false } }
+          }
+        }
+      });
+
+      // NTP source
+      if (ntpChart) ntpChart.destroy();
+      const ntpLabels = Object.keys(ntpCounts).sort((a, b) => ntpCounts[b] - ntpCounts[a]).slice(0, 8);
+      const ntpValues = ntpLabels.map(k => ntpCounts[k]);
+
+      ntpChart = new Chart(document.getElementById('ntpChart').getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: ntpLabels,
+          datasets: [{
+            label: 'controllers',
+            data: ntpValues,
+            backgroundColor: ntpLabels.map((_, i) => [colors.healthy, colors.warning, colors.critical, colors.accentBlue][i % 4]),
+            borderRadius: 4,
+            borderSkipped: false,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          plugins: {
+            legend: { display: false },
+            tooltip: { backgroundColor: '#0b1220', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1 }
+          },
+          scales: {
+            y: { beginAtZero: true, ticks: { color: colors.textMuted, font: { size: 11 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
+            x: { ticks: { color: colors.textSecondary, font: { size: 11 } }, grid: { display: false } }
+          }
+        }
+      });
+    }
+
+    // ============================================================
+    // Rendering: Kerberos Risk Panel
+    // ============================================================
+    function renderKerberos(statusRecords) {
+      const tbody = document.getElementById('kerberosBody');
+      const risk = statusRecords.filter(r => r.kerberos_safe === false || String(r.kerberos_safe).toLowerCase() === 'false');
+      document.getElementById('kerberosCount').textContent = `${risk.length} items`;
+
+      if (!risk.length) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="4">
+              <div class="empty-state">
+                <div class="empty-icon">🔏</div>
+                <h3>No Kerberos Risk Detected</h3>
+                <p>All domain controllers report kerberos_safe=true for the latest check.</p>
+              </div>
+            </td>
+          </tr>`;
+        return;
+      }
+
+      tbody.innerHTML = risk
+        .slice()
+        .sort((a, b) => Math.abs(safeNum(b.clock_drift_ms, 0)) - Math.abs(safeNum(a.clock_drift_ms, 0)))
+        .map(r => {
+          const drift = safeNum(r.clock_drift_ms, 0);
+          const score = safeNum(r.health_score, 0);
+          return `
+            <tr class="priority-row">
+              <td><span class="priority-dot"></span>${escHtml(r.dc_name)}</td>
+              <td>${drift} ms</td>
+              <td>${score}</td>
+              <td>${escHtml(toLocalString(r.last_sync_time || r.checked_at))}</td>
+            </tr>`;
+        })
+        .join('');
+    }
+
+    // ============================================================
+    // Alerts: filtering/sorting + render
+    // ============================================================
+    function filterAlerts() {
+      const search = (document.getElementById('alertsSearch').value || '').toLowerCase().trim();
+      const severity = document.getElementById('alertsSeverity').value;
+      const sort = document.getElementById('alertsSort').value;
+
+      let data = allAlerts.filter(a => a.resolved === false || String(a.resolved).toLowerCase() === 'false');
+
+      if (drillSync !== 'all') {
+        const allowed = new Set(allStatus.filter(s => classifySyncStatus(s.sync_status) === drillSync).map(s => s.dc_name));
+        data = data.filter(a => allowed.has(a.dc_name));
+      }
+
+      if (severity !== 'all') {
+        data = data.filter(a => String(a.severity || '').toLowerCase() === String(severity).toLowerCase());
+      }
+
+      if (search) {
+        data = data.filter(a => {
+          const hay = [a.dc_name, a.alert_type, a.alert_message, a.severity].join(' ').toLowerCase();
+          return hay.includes(search);
+        });
+      }
+
+      if (sort === 'detected_at_asc') {
+        data.sort((a, b) => new Date(a.detected_at).getTime() - new Date(b.detected_at).getTime());
+      } else if (sort === 'severity_desc') {
+        data.sort((a, b) => severityRank(b.severity) - severityRank(a.severity));
+      } else {
+        data.sort((a, b) => new Date(b.detected_at).getTime() - new Date(a.detected_at).getTime());
+      }
+
+      return data;
+    }
+
+    function renderAlerts() {
+      const tbody = document.getElementById('alertsBody');
+      const data = filterAlerts();
+      document.getElementById('alertsCount').textContent = `${data.length} active alerts`;
+
+      if (!data.length) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="5">
+              <div class="empty-state">
+                <div class="empty-icon">✅</div>
+                <h3>No Active Alerts</h3>
+                <p>All current alerts are resolved.</p>
+              </div>
+            </td>
+          </tr>`;
+        return;
+      }
+
+      tbody.innerHTML = data.map(a => {
+        const sev = String(a.severity || '').toLowerCase();
+        const clsRow = (sev === 'critical' || sev === 'high') ? 'priority-row' : '';
+        return `
+          <tr class="${clsRow}">
+            <td>${escHtml(a.dc_name)}</td>
+            <td>${escHtml(a.alert_type)}</td>
+            <td>${escHtml(a.severity)}</td>
+            <td>${escHtml(a.alert_message)}</td>
+            <td>${escHtml(toLocalString(a.detected_at))}</td>
+          </tr>`;
+      }).join('');
+    }
+
+    function filterAndRenderAlerts() { renderAlerts(); }
+
+    // ============================================================
+    // Inventory filtering/sorting/pagination + render
+    // ============================================================
+    function classifyForInventory(sync_status) {
+      return classifySyncStatus(sync_status);
+    }
+
+    function filterAndRenderInventory() {
+      const tbody = document.getElementById('inventoryBody');
+      const search = (document.getElementById('inventorySearch').value || '').toLowerCase().trim();
+      const syncFilter = document.getElementById('inventorySyncFilter').value;
+      const sortKey = document.getElementById('inventorySort').value;
+
+      inventoryState.search = search;
+      inventoryState.syncFilter = syncFilter;
+      inventoryState.sortKey = sortKey;
+      inventoryState.page = 1;
+
+      const records = allStatus.slice().filter(r => {
+        if (drillSync !== 'all') {
+          const cls = classifyForInventory(r.sync_status);
+          if (cls !== drillSync) return false;
+        }
+        if (syncFilter !== 'all') {
+          const cls = classifyForInventory(r.sync_status);
+          if (cls !== syncFilter) return false;
+        }
+        if (!search) return true;
+        const hay = [r.dc_name, r.site_name, r.domain_name, r.ntp_source, r.stratum_level, r.sync_status, r.clock_drift_ms, r.offset_ms, r.last_sync_time, r.health_score].join(' ').toLowerCase();
+        return hay.includes(search);
+      });
+
+      // sort
+      records.sort((a, b) => {
+        if (sortKey === 'health_desc') return safeNum(b.health_score) - safeNum(a.health_score);
+        if (sortKey === 'drift_desc') return Math.abs(safeNum(b.clock_drift_ms)) - Math.abs(safeNum(a.clock_drift_ms));
+        if (sortKey === 'drift_asc') return Math.abs(safeNum(a.clock_drift_ms)) - Math.abs(safeNum(b.clock_drift_ms));
+        if (sortKey === 'name_asc') return String(a.dc_name).localeCompare(String(b.dc_name));
+        return 0;
+      });
+
+      const total = records.length;
+      const totalPages = Math.max(1, Math.ceil(total / inventoryState.pageSize));
+      const page = Math.min(inventoryState.page, totalPages);
+      const start = (page - 1) * inventoryState.pageSize;
+      const end = Math.min(start + inventoryState.pageSize, total);
+
+      document.getElementById('pageStart').textContent = total ? start + 1 : 0;
+      document.getElementById('pageEnd').textContent = end;
+      document.getElementById('totalRecords').textContent = total;
+      document.getElementById('inventoryCount').textContent = `${total} records`;
+
+      renderPagination(totalPages, page, () => {
+        inventoryState.page = page;
+      });
+
+      if (!total) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="10">
+              <div class="empty-state">
+                <div class="empty-icon">📋</div>
+                <h3>No Controllers Match</h3>
+                <p>Adjust filters or clear the search term.</p>
+              </div>
+            </td>
+          </tr>`;
+        return;
+      }
+
+      const pageRecords = records.slice(start, end);
+      tbody.innerHTML = pageRecords.map(r => {
+        const cls = classifyForInventory(r.sync_status);
+        const drift = safeNum(r.clock_drift_ms, 0);
+        const offset = safeNum(r.offset_ms, 0);
+        return `
+          <tr>
+            <td>${escHtml(r.dc_name)}</td>
+            <td>${escHtml(r.site_name)}</td>
+            <td>${escHtml(r.domain_name)}</td>
+            <td>${escHtml(r.ntp_source)}</td>
+            <td>${escHtml(r.stratum_level)}</td>
+            <td><span class="status-badge ${cls === 'Healthy' ? 'healthy' : cls === 'Warning' ? 'warning' : 'critical'}">${cls}</span></td>
+            <td>${drift} ms</td>
+            <td>${offset} ms</td>
+            <td>${escHtml(toLocalString(r.last_sync_time || r.checked_at))}</td>
+            <td>${safeNum(r.health_score, 0)}</td>
+          </tr>`;
+      }).join('');
+
+      // store for pagination
+      inventoryState._lastFiltered = records;
+    }
+
+    function renderPagination(totalPages, activePage) {
+      const container = document.getElementById('paginationControls');
+      if (totalPages <= 1) { container.innerHTML = ''; return; }
+
+      let html = '';
+      html += `<button class="page-btn" onclick="goInventoryPage(${activePage - 1})" ${activePage <= 1 ? 'disabled' : ''}>‹</button>`;
+
+      const startPage = Math.max(1, activePage - 2);
+      const endPage = Math.min(totalPages, activePage + 2);
+
+      if (startPage > 1) {
+        html += `<button class="page-btn" onclick="goInventoryPage(1)">1</button>`;
+        if (startPage > 2) html += `<span class="page-btn" style="border:none;cursor:default;">…</span>`;
+      }
+
+      for (let i = startPage; i <= endPage; i++) {
+        html += `<button class="page-btn ${i === activePage ? 'active' : ''}" onclick="goInventoryPage(${i})">${i}</button>`;
+      }
+
+      if (endPage < totalPages) {
+        if (endPage < totalPages - 1) html += `<span class="page-btn" style="border:none;cursor:default;">…</span>`;
+        html += `<button class="page-btn" onclick="goInventoryPage(${totalPages})">${totalPages}</button>`;
+      }
+
+      html += `<button class="page-btn" onclick="goInventoryPage(${activePage + 1})" ${activePage >= totalPages ? 'disabled' : ''}>›</button>`;
+      container.innerHTML = html;
+    }
+
+    function goInventoryPage(p) {
+      const records = inventoryState._lastFiltered || [];
+      const total = records.length;
+      const totalPages = Math.max(1, Math.ceil(total / inventoryState.pageSize));
+      if (p < 1 || p > totalPages) return;
+      inventoryState.page = p;
+
+      const tbody = document.getElementById('inventoryBody');
+      const start = (p - 1) * inventoryState.pageSize;
+      const end = Math.min(start + inventoryState.pageSize, total);
+
+      document.getElementById('pageStart').textContent = total ? start + 1 : 0;
+      document.getElementById('pageEnd').textContent = end;
+      document.getElementById('totalRecords').textContent = total;
+
+      renderPagination(totalPages, p);
+
+      const pageRecords = records.slice(start, end);
+      tbody.innerHTML = pageRecords.map(r => {
+        const cls = classifyForInventory(r.sync_status);
+        const drift = safeNum(r.clock_drift_ms, 0);
+        const offset = safeNum(r.offset_ms, 0);
+        return `
+          <tr>
+            <td>${escHtml(r.dc_name)}</td>
+            <td>${escHtml(r.site_name)}</td>
+            <td>${escHtml(r.domain_name)}</td>
+            <td>${escHtml(r.ntp_source)}</td>
+            <td>${escHtml(r.stratum_level)}</td>
+            <td><span class="status-badge ${cls === 'Healthy' ? 'healthy' : cls === 'Warning' ? 'warning' : 'critical'}">${cls}</span></td>
+            <td>${drift} ms</td>
+            <td>${offset} ms</td>
+            <td>${escHtml(toLocalString(r.last_sync_time || r.checked_at))}</td>
+            <td>${safeNum(r.health_score, 0)}</td>
+          </tr>`;
+      }).join('');
+    }
+
+    // Export CSV
+    function exportCsv() {
+      const records = inventoryState._lastFiltered || allStatus;
+      if (!records.length) return;
+
+      const headers = ['dc_name','site_name','domain_name','ntp_source','stratum_level','sync_status','clock_drift_ms','offset_ms','last_sync_time','health_score'];
+      const rows = records.map(r => headers.map(h => String(r[h] ?? '')).map(v => '"' + v.replace(/"/g,'""') + '"').join(','));
+      const csv = [headers.join(','), ...rows].join('\n');
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `ad-dc-time-sync-${new Date().toISOString().slice(0,10)}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+
+    // ============================================================
+    // Drilldown handling
+    // ============================================================
+    function setDrilldown(val) {
+      drillSync = val;
+      setSelectedKpi(val);
+      const filtered = getFilteredStatus();
+      renderSummary(filtered);
+      renderCharts(filtered);
+      renderKerberos(filtered);
+      renderAlerts();
+      // inventory uses its own filters + drillSync
+      filterAndRenderInventory();
+    }
+
+    // ============================================================
+    // Main load + auto-refresh
+    // ============================================================
+    function setLoading(isLoading) {
+      const btn = document.getElementById('refreshBtn');
+      if (!btn) return;
+      if (isLoading) {
+        btn.classList.add('loading');
+        btn.textContent = '⟳ Loading...';
+      } else {
+        btn.classList.remove('loading');
+        btn.textContent = '⟳ Refresh Data';
+      }
+    }
+
+    async function loadData(manual = false) {
+      try {
+        if (manual) setLoading(true);
+
+        const [status, alerts] = await Promise.all([
+          (async () => { try { return await fetchRenderStatus(); } catch { return sampleStatusData(); } })(),
+          (async () => { try { return await fetchRenderAlerts(); } catch { return sampleAlertsData(); } })(),
+        ]);
+
+        allStatus = Array.isArray(status) ? status : [];
+        allAlerts = Array.isArray(alerts) ? alerts : [];
+
+        const filtered = getFilteredStatus();
+        renderSummary(filtered);
+        renderCharts(filtered);
+        renderKerberos(filtered);
+        renderAlerts();
+        filterAndRenderInventory();
+
+        document.getElementById('lastUpdated').textContent = `Last updated: ${toLocalString(new Date().toISOString())}`;
+      } catch (e) {
+        // If charts/table nodes exist, show error in inventory
+        const inv = document.getElementById('inventoryBody');
+        if (inv) {
+          inv.innerHTML = `
+            <tr>
+              <td colspan="10">
+                <div class="error-state">
+                  <div class="error-icon">⚠️</div>
+                  <h3>Failed to Load Data</h3>
+                  <p>${escHtml(e?.message || 'Could not connect to the server.')}</p>
+                  <p style="margin-top:12px;">
+                    <button class="btn-refresh" onclick="loadData(true)" style="background:var(--accent-red-bg);color:var(--accent-red);border-color:rgba(255,23,68,0.3);">⟳ Retry</button>
+                  </p>
+                </div>
+              </td>
+            </tr>`;
+        }
+      } finally {
+        if (manual) setLoading(false);
+      }
+    }
+
+    // ============================================================
+    // Inventory pagination re-render hooks
+    // ============================================================
+    function filterAndRenderInventory() {
+      const search = (document.getElementById('inventorySearch').value || '').toLowerCase().trim();
+      const syncFilter = document.getElementById('inventorySyncFilter').value;
+      const sortKey = document.getElementById('inventorySort').value;
+
+      inventoryState.search = search;
+      inventoryState.syncFilter = syncFilter;
+      inventoryState.sortKey = sortKey;
+      inventoryState.page = 1;
+
+      // Compute filtered records
+      const records = allStatus.slice().filter(r => {
+        if (drillSync !== 'all') {
+          const cls = classifySyncStatus(r.sync_status);
+          if (cls !== drillSync) return false;
+        }
+        if (syncFilter !== 'all') {
+          const cls = classifySyncStatus(r.sync_status);
+          if (cls !== syncFilter) return false;
+        }
+        if (!search) return true;
+        const hay = [r.dc_name, r.site_name, r.domain_name, r.ntp_source, r.stratum_level, r.sync_status, r.clock_drift_ms, r.offset_ms, r.last_sync_time, r.health_score].join(' ').toLowerCase();
+        return hay.includes(search);
+      });
+
+      // Sort
+      records.sort((a, b) => {
+        if (sortKey === 'health_desc') return safeNum(b.health_score) - safeNum(a.health_score);
+        if (sortKey === 'drift_desc') return Math.abs(safeNum(b.clock_drift_ms)) - Math.abs(safeNum(a.clock_drift_ms));
+        if (sortKey === 'drift_asc') return Math.abs(safeNum(a.clock_drift_ms)) - Math.abs(safeNum(b.clock_drift_ms));
+        if (sortKey === 'name_asc') return String(a.dc_name).localeCompare(String(b.dc_name));
+        return 0;
+      });
+
+      inventoryState._lastFiltered = records;
+
+      const total = records.length;
+      const totalPages = Math.max(1, Math.ceil(total / inventoryState.pageSize));
+      const page = Math.min(inventoryState.page, totalPages);
+      const start = (page - 1) * inventoryState.pageSize;
+      const end = Math.min(start + inventoryState.pageSize, total);
+
+      document.getElementById('pageStart').textContent = total ? start + 1 : 0;
+      document.getElementById('pageEnd').textContent = end;
+      document.getElementById('totalRecords').textContent = total;
+      document.getElementById('inventoryCount').textContent = `${total} records`;
+
+      renderPagination(totalPages, page);
+
+      const tbody = document.getElementById('inventoryBody');
+      if (!total) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="10">
+              <div class="empty-state">
+                <div class="empty-icon">📋</div>
+                <h3>No Controllers Match</h3>
+                <p>Adjust filters or clear the search term.</p>
+              </div>
+            </td>
+          </tr>`;
+        return;
+      }
+
+      const pageRecords = records.slice(start, end);
+      tbody.innerHTML = pageRecords.map(r => {
+        const cls = classifySyncStatus(r.sync_status);
+        const drift = safeNum(r.clock_drift_ms, 0);
+        const offset = safeNum(r.offset_ms, 0);
+        return `
+          <tr>
+            <td>${escHtml(r.dc_name)}</td>
+            <td>${escHtml(r.site_name)}</td>
+            <td>${escHtml(r.domain_name)}</td>
+            <td>${escHtml(r.ntp_source)}</td>
+            <td>${escHtml(r.stratum_level)}</td>
+            <td><span class="status-badge ${cls === 'Healthy' ? 'healthy' : cls === 'Warning' ? 'warning' : 'critical'}">${cls}</span></td>
+            <td>${drift} ms</td>
+            <td>${offset} ms</td>
+            <td>${escHtml(toLocalString(r.last_sync_time || r.checked_at))}</td>
+            <td>${safeNum(r.health_score, 0)}</td>
+          </tr>`;
+      }).join('');
+    }
+
+    // ============================================================
+    // Matrix Rain Effect (matches homepage style)
+    // ============================================================
+    (function() {
+      const canvas = document.getElementById('matrix-canvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      const dpr = Math.max(1, window.devicePixelRatio || 1);
+      let width = 0;
+      let height = 0;
+      let columns = 0;
+      let drops = [];
+
+      function resize() {
+        width = Math.floor(window.innerWidth);
+        height = Math.floor(window.innerHeight);
+        canvas.width = Math.floor(width * dpr);
+        canvas.height = Math.floor(height * dpr);
+        canvas.style.width = width + 'px';
+        canvas.style.height = height + 'px';
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+        const fontSize = 14;
+        columns = Math.floor(width / fontSize);
+        drops = new Array(columns).fill(0).map(() => Math.floor(Math.random() * (height / fontSize)));
+      }
+
+      function tick() {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+        ctx.fillRect(0, 0, width, height);
+
+        const fontSize = 14;
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*()';
+
+        for (let i = 0; i < drops.length; i++) {
+          const x = i * fontSize;
+          const y = drops[i] * fontSize;
+          const ch = chars[Math.floor(Math.random() * chars.length)];
+
+          const color = Math.random() > 0.985 ? getComputedStyle(document.documentElement).getPropertyValue('--matrix-green').trim() || '#00ff41' : getComputedStyle(document.documentElement).getPropertyValue('--matrix-dim').trim() || '#008f11';
+          ctx.fillStyle = color;
+          ctx.font = fontSize + 'px monospace';
+          ctx.fillText(ch, x, y);
+
+          if (y > height && Math.random() > 0.975) drops[i] = 0;
+          else drops[i]++;
+        }
+
+        requestAnimationFrame(tick);
+      }
+
+      window.addEventListener('resize', resize);
+      resize();
+      tick();
+    })();
+
+    // ============================================================
+    // Init
+    // ============================================================
+    document.addEventListener('DOMContentLoaded', () => {
+      setSelectedKpi('all');
+      loadData(false);
+      setInterval(() => loadData(false), REFRESH_MS);
+    });
+  </script>
+</body>
+</html>
+
