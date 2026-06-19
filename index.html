@@ -1845,6 +1845,10 @@
 
                     alert(data?.message || 'Thank you for contacting! I will get back to you soon.');
                     contactForm.reset();
+                    // Prevent any browser navigation/redirect (e.g., Formspree thanks page)
+                    if (typeof e !== 'undefined') e.preventDefault();
+                    if (typeof e !== 'undefined') e.stopPropagation();
+
                 } catch (err) {
                     alert('Server error');
                 } finally {
