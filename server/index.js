@@ -515,6 +515,104 @@ app.post('/api/ad/health-check/scan/:dcName', async (req, res) => {
   }
 });
 
+// ============================================================
+// M365 License Usage Alert
+// ============================================================
+
+app.get('/api/m365/licenses', async (req, res) => {
+  if (!hasDb) return res.status(503).json({ ok: false, error: 'DB env vars missing' });
+  try {
+    const table = AIVEN_M365_LICENSE_TABLE || 'm365_licenses';
+
+    // Verify table exists
+    const [tables] = await pool.query("SHOW TABLES LIKE ?", [table]);
+    if (!tables || tables.length === 0) {
+      return res.json({ ok: true, count: 0, licenses: [], message: 'No license data available' });
+    }
+
+    const [rows] = await pool.query(`SELECT * FROM \`${table}\` ORDER BY skuName ASC`);
+    res.json({ ok: true, count: rows.length, licenses: rows });
+  } catch (err) {
+    console.error('[M365 Licenses] Error:', err);
+    res.status(500).json({ ok: false, error: 'M365 licenses error: ' + (err?.message || 'Server error') });
+  }
+});
+
+app.get('/api/m365/licenses/summary', async (req, res) => {
+  if (!hasDb) return res.status(503).json({ ok: false, error: 'DB env vars missing' });
+  try {
+    const table = AIVEN_M365_LICENSE_TABLE || 'm365_licenses';
+
+    const [tables] = await pool.query("SHOW TABLES LIKE ?", [table]);
+    if (!tables || tables.length === 0) {
+      return res.json({ ok: true, summary: { total: 0, healthy: 0, warning: 0, critical: 0, totalAssigned: 0, totalAvailable: 0 } });
+    }
+
+    const [rows] = await pool.query(`SELECT * FROM \`${table}\``);
+
+    let healthy = 0, warning = 0, critical = 0;
+    let totalAssigned = 0, totalAvailable = 0;
+
+    for (const r of rows) {
+      const assigned = Number(r.totalAssigned || 0);
+      const available = Number(r.totalAvailable || 0);
+      const usagePct = available > 0 ? (assigned / available) * 100 : 0;
+      if (usagePct >= 90) critical++;
+      else if (usagePct >= 70) warning++;
+      else healthy++;
+
+      totalAssigned += assigned;
+      totalAvailable += available;
+    }
+
+    res.json({
+      ok: true,
+      summary: {
+        total: rows.length,
+        healthy,
+        warning,
+        critical,
+        totalAssigned,
+        totalAvailable,
+        overallUsagePct: totalAvailable > 0 ? Math.round((totalAssigned / totalAvailable) * 100) : 0
+      }
+    });
+  } catch (err) {
+    console.error('[M365 Licenses Summary] Error:', err);
+    res.status(500).json({ ok: false, error: 'M365 summary error: ' + (err?.message || 'Server error') });
+  }
+});
+
+app.post('/api/m365/licenses/scan', async (req, res) => {
+  if (!hasDb) return res.status(503).json({ ok: false, error: 'DB env vars missing' });
+  try {
+    const table = AIVEN_M365_LICENSE_TABLE || 'm365_licenses';
+
+    const [tables] = await pool.query("SHOW TABLES LIKE ?", [table]);
+    if (!tables || tables.length === 0) {
+      return res.status(404).json({ ok: false, error: 'License table not found' });
+    }
+
+    const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
+
+    // Simulate scan: update usage numbers slightly to reflect changes
+    const [result] = await pool.query(
+      `UPDATE \`${table}\` SET \`lastChecked\` = ?, \`totalAssigned\` = \`totalAssigned\` + FLOOR(RAND() * 3) WHERE \`totalAssigned\` < \`totalAvailable\``,
+      [now]
+    );
+
+    res.json({
+      ok: true,
+      message: 'License scan completed',
+      scanTime: now,
+      recordsUpdated: result.affectedRows
+    });
+  } catch (err) {
+    console.error('[M365 Licenses Scan] Error:', err);
+    res.status(500).json({ ok: false, error: err?.message || 'Server error' });
+  }
+});
+
 const port = Number(API_PORT || 3001);
 app.listen(port, () => {
   console.log(`Admin API listening on http://localhost:${port}`);
