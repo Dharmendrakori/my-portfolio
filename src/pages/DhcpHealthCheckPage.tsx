@@ -26,7 +26,6 @@ const COLORS = {
   red: '#ef4444',
   blue: '#3b82f6',
   gray: '#6b7280',
-  neon: '#00ff9d',
 };
 
 const STATUS_BADGE_CLASSES: Record<string, string> = {
@@ -39,9 +38,15 @@ const STATUS_BADGE_CLASSES: Record<string, string> = {
 
 type SortDir = 'asc' | 'desc';
 
-function getPingBadge(value: string | boolean) {
-  const normalized = String(value).toLowerCase();
-  const ok = normalized === 'true' || normalized === '1' || value === true;
+function getStatus(server: DhcpHealthRecord): 'Healthy' | 'Warning' | 'Critical' {
+  if (server.overallStatus) return server.overallStatus as 'Healthy' | 'Warning' | 'Critical';
+  if (server.pingStatus === 'False' || server.dhcpServiceStatus === 'Stopped') return 'Critical';
+  if (server.usagePercentage >= 80) return 'Warning';
+  return 'Healthy';
+}
+
+function getPingBadge(value: string) {
+  const ok = value === 'True';
   return (
     <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_BADGE_CLASSES[ok ? 'green' : 'red']}`}>
       {ok ? 'Reachable' : 'Unreachable'}
@@ -50,8 +55,7 @@ function getPingBadge(value: string | boolean) {
 }
 
 function getServiceBadge(value: string) {
-  const normalized = String(value).toLowerCase();
-  const ok = normalized === 'running';
+  const ok = value === 'Running';
   return (
     <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_BADGE_CLASSES[ok ? 'green' : 'red']}`}>
       {value}
@@ -66,7 +70,7 @@ function getUsageColor(value: number) {
 }
 
 function getFailoverBadge(value: string) {
-  const normalized = String(value).toLowerCase();
+  const normalized = value.toLowerCase();
   let color: keyof typeof STATUS_BADGE_CLASSES = 'gray';
   if (normalized.includes('hot standby')) color = 'green';
   else if (normalized.includes('load balance')) color = 'blue';
@@ -80,24 +84,19 @@ function getFailoverBadge(value: string) {
   );
 }
 
-function getServerHealthBadge(record: DhcpHealthRecord) {
-  const ping = String(record.PingStatus).toLowerCase() === 'true' || record.PingStatus === '1' || record.PingStatus === true;
-  const service = String(record.DHCPServiceStatus).toLowerCase() === 'running';
-  const usage = Number(record.UsagePercentage || 0);
-
-  if (!ping || !service || usage > 90) {
-    return <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_BADGE_CLASSES.red}`}>Critical</span>;
-  }
-  if (usage >= 80) {
-    return <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_BADGE_CLASSES.amber}`}>Warning</span>;
-  }
-  return <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_BADGE_CLASSES.green}`}>Healthy</span>;
+function getHealthBadge(status: 'Healthy' | 'Warning' | 'Critical') {
+  const map = {
+    Healthy: STATUS_BADGE_CLASSES.green,
+    Warning: STATUS_BADGE_CLASSES.amber,
+    Critical: STATUS_BADGE_CLASSES.red,
+  } as const;
+  return <span className={`px-2 py-1 rounded-full text-xs font-medium ${map[status]}`}>{status}</span>;
 }
 
 function SkeletonRow() {
   return (
     <tr className="border-b border-white/5">
-      {Array.from({ length: 8 }).map((_, idx) => (
+      {Array.from({ length: 9 }).map((_, idx) => (
         <td key={idx} className="px-4 py-3">
           <div className="h-4 w-full animate-pulse rounded bg-white/10" />
         </td>
@@ -112,7 +111,7 @@ export default function DhcpHealthCheckPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
-  const [sortKey, setSortKey] = useState<keyof DhcpHealthRecord>('DHCPServer');
+  const [sortKey, setSortKey] = useState<keyof DhcpHealthRecord>('dhcpServer');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const pageSize = 10;
 
@@ -120,6 +119,7 @@ export default function DhcpHealthCheckPage() {
     setLoading(true);
     try {
       const [healthRes, summaryRes] = await Promise.all([fetchDhcpHealth(), fetchDhcpHealthSummary()]);
+      console.log('DHCP API Response', healthRes.data);
       if (healthRes.success && healthRes.data) setRecords(healthRes.data);
       if (summaryRes.success && summaryRes.summary) setSummary(summaryRes.summary);
     } catch (err) {
@@ -138,14 +138,14 @@ export default function DhcpHealthCheckPage() {
     if (!term) return records;
     return records.filter((r) => {
       const haystack = [
-        r.DHCPServer,
-        String(r.PingStatus),
-        r.DHCPServiceStatus,
-        String(r.ScopeCount),
-        String(r.UsagePercentage),
-        r.FailoverPartner || '',
-        r.FailoverMode,
-        r.LastChecked,
+        r.dhcpServer,
+        r.pingStatus,
+        r.dhcpServiceStatus,
+        String(r.scopeCount),
+        String(r.usagePercentage),
+        r.failoverPartner || '',
+        r.failoverMode,
+        r.lastChecked,
       ]
         .join(' ')
         .toLowerCase();
@@ -199,14 +199,14 @@ export default function DhcpHealthCheckPage() {
   const scopeChartData = useMemo(
     () =>
       records.map((r) => ({
-        server: r.DHCPServer,
-        usage: Number(r.UsagePercentage || 0),
+        server: r.dhcpServer,
+        usage: Number(r.usagePercentage || 0),
       })),
     [records]
   );
 
   const serviceStatusData = useMemo(() => {
-    const running = records.filter((r) => String(r.DHCPServiceStatus).toLowerCase() === 'running').length;
+    const running = records.filter((r) => r.dhcpServiceStatus === 'Running').length;
     const stopped = records.length - running;
     return [
       { name: 'Running', value: running },
@@ -217,7 +217,7 @@ export default function DhcpHealthCheckPage() {
   const failoverModeData = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const r of records) {
-      const mode = r.FailoverMode || 'Unknown';
+      const mode = r.failoverMode || 'Unknown';
       counts[mode] = (counts[mode] || 0) + 1;
     }
     return Object.entries(counts).map(([name, value]) => ({ name, value }));
@@ -228,12 +228,10 @@ export default function DhcpHealthCheckPage() {
     let warning = 0;
     let critical = 0;
     for (const r of records) {
-      const ping = String(r.PingStatus).toLowerCase() === 'true' || String(r.PingStatus) === '1';
-      const service = String(r.DHCPServiceStatus).toLowerCase() === 'running';
-      const usage = Number(r.UsagePercentage || 0);
-      if (!ping || !service || usage > 90) critical++;
-      else if (usage >= 80) warning++;
-      else healthy++;
+      const status = getStatus(r);
+      if (status === 'Healthy') healthy++;
+      else if (status === 'Warning') warning++;
+      else critical++;
     }
     return [
       { name: 'Servers', healthy, warning, critical },
@@ -409,14 +407,15 @@ export default function DhcpHealthCheckPage() {
               <thead>
                 <tr className="border-b border-white/5 text-xs uppercase text-gray-400">
                   {[
-                    ['DHCPServer', 'DHCP Server'],
-                    ['PingStatus', 'Ping Status'],
-                    ['DHCPServiceStatus', 'DHCP Service'],
-                    ['ScopeCount', 'Scope Count'],
-                    ['UsagePercentage', 'Usage %'],
-                    ['FailoverPartner', 'Failover Partner'],
-                    ['FailoverMode', 'Failover Mode'],
-                    ['LastChecked', 'Last Checked'],
+                    ['dhcpServer', 'DHCP Server'],
+                    ['pingStatus', 'Ping Status'],
+                    ['dhcpServiceStatus', 'DHCP Service'],
+                    ['scopeCount', 'Scope Count'],
+                    ['usagePercentage', 'Usage %'],
+                    ['failoverPartner', 'Failover Partner'],
+                    ['failoverMode', 'Failover Mode'],
+                    ['overallStatus', 'Overall Status'],
+                    ['lastChecked', 'Last Checked'],
                   ].map(([key, label]) => (
                     <th
                       key={key}
@@ -436,35 +435,39 @@ export default function DhcpHealthCheckPage() {
                   Array.from({ length: 5 }).map((_, idx) => <SkeletonRow key={idx} />)
                 ) : pageData.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-4 py-10 text-center text-sm text-gray-500">
+                    <td colSpan={9} className="px-4 py-10 text-center text-sm text-gray-500">
                       No DHCP health records found.
                     </td>
                   </tr>
                 ) : (
-                  pageData.map((r) => (
-                    <tr key={r.Id} className="border-b border-white/5 transition hover:bg-white/[0.02]">
-                      <td className="px-4 py-3 font-medium text-white">{r.DHCPServer}</td>
-                      <td className="px-4 py-3">{getPingBadge(r.PingStatus)}</td>
-                      <td className="px-4 py-3">{getServiceBadge(r.DHCPServiceStatus)}</td>
-                      <td className="px-4 py-3 text-gray-300">{r.ScopeCount}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <span className={`font-medium ${getUsageColor(Number(r.UsagePercentage || 0)) === 'green' ? 'text-emerald-300' : getUsageColor(Number(r.UsagePercentage || 0)) === 'amber' ? 'text-amber-300' : 'text-red-300'}`}>
-                            {r.UsagePercentage}%
-                          </span>
-                          <div className="h-1.5 w-16 overflow-hidden rounded-full bg-white/10">
-                            <div
-                              className={`h-full rounded-full ${getUsageColor(Number(r.UsagePercentage || 0)) === 'green' ? 'bg-emerald-500' : getUsageColor(Number(r.UsagePercentage || 0)) === 'amber' ? 'bg-amber-500' : 'bg-red-500'}`}
-                              style={{ width: `${Math.min(Number(r.UsagePercentage || 0), 100)}%` }}
-                            />
+                  pageData.map((r) => {
+                    const status = getStatus(r);
+                    return (
+                      <tr key={r.id} className="border-b border-white/5 transition hover:bg-white/[0.02]">
+                        <td className="px-4 py-3 font-medium text-white">{r.dhcpServer}</td>
+                        <td className="px-4 py-3">{getPingBadge(r.pingStatus)}</td>
+                        <td className="px-4 py-3">{getServiceBadge(r.dhcpServiceStatus)}</td>
+                        <td className="px-4 py-3 text-gray-300">{r.scopeCount}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <span className={`font-medium ${getUsageColor(Number(r.usagePercentage || 0)) === 'green' ? 'text-emerald-300' : getUsageColor(Number(r.usagePercentage || 0)) === 'amber' ? 'text-amber-300' : 'text-red-300'}`}>
+                              {r.usagePercentage}%
+                            </span>
+                            <div className="h-1.5 w-16 overflow-hidden rounded-full bg-white/10">
+                              <div
+                                className={`h-full rounded-full ${getUsageColor(Number(r.usagePercentage || 0)) === 'green' ? 'bg-emerald-500' : getUsageColor(Number(r.usagePercentage || 0)) === 'amber' ? 'bg-amber-500' : 'bg-red-500'}`}
+                                style={{ width: `${Math.min(Number(r.usagePercentage || 0), 100)}%` }}
+                              />
+                            </div>
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-gray-300">{r.FailoverPartner || 'N/A'}</td>
-                      <td className="px-4 py-3">{getFailoverBadge(r.FailoverMode)}</td>
-                      <td className="px-4 py-3 text-gray-400">{r.LastChecked}</td>
-                    </tr>
-                  ))
+                        </td>
+                        <td className="px-4 py-3 text-gray-300">{r.failoverPartner || 'N/A'}</td>
+                        <td className="px-4 py-3">{getFailoverBadge(r.failoverMode)}</td>
+                        <td className="px-4 py-3">{getHealthBadge(status)}</td>
+                        <td className="px-4 py-3 text-gray-400">{r.lastChecked}</td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>

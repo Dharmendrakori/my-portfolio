@@ -578,7 +578,18 @@ app.get('/api/dhcp-health', async (req, res) => {
     }
 
     const [rows] = await pool.query(`SELECT Id, DHCPServer, PingStatus, DHCPServiceStatus, ScopeCount, UsagePercentage, FailoverPartner, FailoverMode, LastChecked FROM \`${table}\` ORDER BY DHCPServer ASC`);
-    res.json({ success: true, data: rows });
+    const data = rows.map((row) => ({
+      id: row.Id,
+      dhcpServer: row.DHCPServer,
+      pingStatus: row.PingStatus,
+      dhcpServiceStatus: row.DHCPServiceStatus,
+      scopeCount: row.ScopeCount,
+      usagePercentage: Number(row.UsagePercentage),
+      failoverPartner: row.FailoverPartner,
+      failoverMode: row.FailoverMode,
+      lastChecked: row.LastChecked,
+    }));
+    res.json({ success: true, data });
   } catch (err) {
     console.error('[DHCP Health] Error:', err);
     res.status(500).json({ success: false, error: err?.message || 'Server error' });

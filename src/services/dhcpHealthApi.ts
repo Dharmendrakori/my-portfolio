@@ -1,15 +1,14 @@
-import { API_BASE } from '../apiConfig';
-
 export interface DhcpHealthRecord {
-  Id: number;
-  DHCPServer: string;
-  PingStatus: string | boolean;
-  DHCPServiceStatus: string;
-  ScopeCount: number;
-  UsagePercentage: number;
-  FailoverPartner: string | null;
-  FailoverMode: string;
-  LastChecked: string;
+  id: number;
+  dhcpServer: string;
+  pingStatus: string;
+  dhcpServiceStatus: string;
+  scopeCount: number;
+  usagePercentage: number;
+  failoverPartner: string | null;
+  failoverMode: string;
+  overallStatus?: string;
+  lastChecked: string;
 }
 
 export interface DhcpHealthSummary {
@@ -35,13 +34,13 @@ export interface DhcpHealthSummaryResponse {
 }
 
 export const fetchDhcpHealth = async (): Promise<DhcpHealthResponse> => {
-  const res = await fetch(`${API_BASE}/api/dhcp-health`);
+  const res = await fetch(`${import.meta.env.VITE_API_BASE || 'https://portfolio-api-3sx8.onrender.com'}/api/dhcp-health`);
   if (!res.ok) throw new Error('Failed to fetch DHCP health data');
   return res.json();
 };
 
 export const fetchDhcpHealthSummary = async (): Promise<DhcpHealthSummaryResponse> => {
-  const res = await fetch(`${API_BASE}/api/dhcp-health/summary`);
+  const res = await fetch(`${import.meta.env.VITE_API_BASE || 'https://portfolio-api-3sx8.onrender.com'}/api/dhcp-health/summary`);
   if (!res.ok) throw new Error('Failed to fetch DHCP health summary');
   return res.json();
 };
@@ -57,18 +56,20 @@ export const exportDhcpHealthCsv = (data: DhcpHealthRecord[]): void => {
     'Usage %',
     'Failover Partner',
     'Failover Mode',
+    'Overall Status',
     'Last Checked',
   ];
 
   const rows = data.map((r) => [
-    r.DHCPServer,
-    String(r.PingStatus),
-    r.DHCPServiceStatus,
-    String(r.ScopeCount),
-    String(r.UsagePercentage),
-    r.FailoverPartner || 'N/A',
-    r.FailoverMode,
-    r.LastChecked,
+    r.dhcpServer,
+    r.pingStatus,
+    r.dhcpServiceStatus,
+    String(r.scopeCount),
+    String(r.usagePercentage),
+    r.failoverPartner || 'N/A',
+    r.failoverMode,
+    r.overallStatus || 'Unknown',
+    r.lastChecked,
   ]);
 
   const csvContent = [headers.join(','), ...rows.map((row) => row.map((cell) => `"${cell}"`).join(','))].join('\n');

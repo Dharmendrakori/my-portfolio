@@ -732,8 +732,70 @@
 
   <script>
     // ============================================================
+    // Matrix Rain Animation (matches homepage style)
+    // ============================================================
+    (function matrixRain() {
+      const canvas = document.getElementById('matrix-canvas');
+      if (!canvas) return;
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      const dpr = Math.max(1, window.devicePixelRatio || 1);
+      let width = 0;
+      let height = 0;
+      let columns = 0;
+      let drops = [];
+
+      function resize() {
+        width = Math.floor(window.innerWidth);
+        height = Math.floor(window.innerHeight);
+        canvas.width = Math.floor(width * dpr);
+        canvas.height = Math.floor(height * dpr);
+        canvas.style.width = width + 'px';
+        canvas.style.height = height + 'px';
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+        const fontSize = 14;
+        columns = Math.floor(width / fontSize);
+        drops = new Array(columns).fill(0).map(() => Math.floor(Math.random() * height / fontSize));
+      }
+
+      function tick() {
+        ctx.fillStyle = 'rgba(11, 14, 23, 0.08)';
+        ctx.fillRect(0, 0, width, height);
+
+        const fontSize = 14;
+        const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+
+        for (let i = 0; i < drops.length; i++) {
+          const x = i * fontSize;
+          const y = drops[i] * fontSize;
+
+          const ch = chars[Math.floor(Math.random() * chars.length)];
+          ctx.fillStyle = Math.random() > 0.98 ? getComputedStyle(document.documentElement).getPropertyValue('--matrix-green').trim() || '#00ff41' : getComputedStyle(document.documentElement).getPropertyValue('--matrix-dim').trim() || '#008f11';
+          ctx.font = fontSize + 'px ' + (getComputedStyle(document.body).fontFamily || 'Segoe UI, sans-serif');
+          ctx.fillText(ch, x, y);
+
+          if (y > height && Math.random() > 0.975) {
+            drops[i] = 0;
+          } else {
+            drops[i]++;
+          }
+        }
+
+        requestAnimationFrame(tick);
+      }
+
+      resize();
+      window.addEventListener('resize', resize);
+      tick();
+    })();
+
+    // ============================================================
     // State
     // ============================================================
+
     const API_BASE = 'https://portfolio-api-3sx8.onrender.com';
 
     let allRecords = [];
@@ -769,6 +831,7 @@
       if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
       const data = await res.json();
       if (!data.success) throw new Error(data.error || 'Unknown error');
+      console.log('DHCP API Response', data.data);
       return data.data || [];
     }
 
@@ -788,11 +851,11 @@
     }
 
     function getPingStatus(record) {
-      return normalizeBool(record.PingStatus) ? 'Reachable' : 'Unreachable';
+      return record.PingStatus === 'True' ? 'Reachable' : 'Unreachable';
     }
 
     function getServiceStatus(record) {
-      return String(record.DHCPServiceStatus || '').toLowerCase() === 'running' ? 'Running' : 'Stopped';
+      return record.DHCPServiceStatus === 'Running' ? 'Running' : 'Stopped';
     }
 
     function getUsageColor(value) {
@@ -811,12 +874,9 @@
     }
 
     function getServerHealth(record) {
-      const ping = normalizeBool(record.PingStatus);
-      const service = String(record.DHCPServiceStatus || '').toLowerCase() === 'running';
-      const usage = Number(record.UsagePercentage || 0);
-
-      if (!ping || !service || usage > 90) return 'Critical';
-      if (usage >= 80) return 'Warning';
+      if (record.OverallStatus) return record.OverallStatus;
+      if (record.PingStatus === 'False' || record.DHCPServiceStatus === 'Stopped') return 'Critical';
+      if (Number(record.UsagePercentage || 0) >= 80) return 'Warning';
       return 'Healthy';
     }
 
@@ -1035,11 +1095,12 @@
       }
 
       tbody.innerHTML = pageData.map(r => {
-        const pingOk = normalizeBool(r.PingStatus);
-        const serviceRunning = String(r.DHCPServiceStatus || '').toLowerCase() === 'running';
+        const pingOk = r.PingStatus === 'True';
+        const serviceRunning = r.DHCPServiceStatus === 'Running';
         const usage = Number(r.UsagePercentage || 0);
         const usageColor = getUsageColor(usage);
         const failoverClass = getFailoverClass(r.FailoverMode);
+        const health = getServerHealth(r);
 
         return `
           <tr>
@@ -1066,6 +1127,11 @@
             <td>${r.FailoverPartner ? escapeHtml(r.FailoverPartner) : 'N/A'}</td>
             <td>
               <span class="failover-badge ${failoverClass}">${escapeHtml(r.FailoverMode)}</span>
+            </td>
+            <td>
+              <span class="status-badge ${health === 'Healthy' ? 'true' : health === 'Warning' ? 'orange' : 'false'}">
+                ${escapeHtml(health)}
+              </span>
             </td>
             <td>${r.LastChecked ? escapeHtml(r.LastChecked) : '--'}</td>
           </tr>
