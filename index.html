@@ -982,8 +982,76 @@
             color: var(--accent-green);
         }
 
+        /* Popup toast */
+        .popup-toast {
+            position: fixed;
+            left: 50%;
+            top: 90px;
+            transform: translateX(-50%);
+            z-index: 2000;
+            width: min(720px, calc(100vw - 24px));
+            padding: 14px 18px;
+            border-radius: 12px;
+            border: 1px solid rgba(0, 255, 65, 0.2);
+            background: rgba(0, 20, 0, 0.75);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+            color: var(--text-primary);
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 180ms ease, transform 180ms ease;
+        }
+
+        .popup-toast.show {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .popup-toast .icon {
+            margin-top: 1px;
+            width: 26px;
+            height: 26px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex: 0 0 auto;
+            border: 1px solid rgba(0, 255, 65, 0.25);
+            background: rgba(0, 255, 65, 0.08);
+        }
+
+        .popup-toast.success {
+            border-color: rgba(0, 255, 65, 0.35);
+        }
+
+        .popup-toast.success .icon {
+            color: var(--accent-green);
+            background: rgba(0, 255, 65, 0.12);
+        }
+
+        .popup-toast.error {
+            border-color: rgba(239, 68, 68, 0.35);
+        }
+
+        .popup-toast.error .icon {
+            color: #f87171;
+            border-color: rgba(239, 68, 68, 0.3);
+            background: rgba(239, 68, 68, 0.12);
+        }
+
+        .popup-toast .text {
+            font-size: 0.98rem;
+            line-height: 1.5;
+            color: var(--text-primary);
+        }
+
         /* Scroll to top */
         .scroll-top {
+
             position: fixed;
             bottom: 30px;
             right: 30px;
@@ -1476,7 +1544,44 @@
         <i class="fas fa-arrow-up"></i>
     </button>
 
+    <div id="popupToast" class="popup-toast" role="status" aria-live="polite">
+        <div id="popupToastIcon" class="icon">
+            <i id="popupToastIconInner" class="fas fa-check"></i>
+        </div>
+        <div class="text" id="popupToastText"></div>
+    </div>
+
     <script>
+        const popupToastEl = document.getElementById('popupToast');
+        const popupToastTextEl = document.getElementById('popupToastText');
+        const popupToastIconInnerEl = document.getElementById('popupToastIconInner');
+
+        function showPopup(message, type) {
+            if (!popupToastEl || !popupToastTextEl || !popupToastIconInnerEl) {
+                alert(message);
+                return;
+            }
+
+            popupToastEl.classList.remove('success', 'error', 'show');
+            popupToastToastEl = popupToastEl; // (keeps older browsers from optimizing?)
+
+            popupToastTextEl.textContent = message;
+
+            if (type === 'error') {
+                popupToastEl.classList.add('error');
+                popupToastIconInnerEl.className = 'fas fa-exclamation';
+            } else {
+                popupToastEl.classList.add('success');
+                popupToastIconInnerEl.className = 'fas fa-check';
+            }
+
+            popupToastEl.classList.add('show');
+            clearTimeout(window.__popupToastTimer);
+            window.__popupToastTimer = setTimeout(() => {
+                popupToastEl.classList.remove('show');
+            }, 4200);
+        }
+
         // Matrix Rain Effect
         const canvas = document.getElementById('matrix-canvas');
         const ctx = canvas.getContext('2d');
@@ -1849,18 +1954,18 @@
                     const data = await resp.json().catch(() => ({}));
 
                     if (!resp.ok || !data.ok) {
-                        alert(data?.error || data?.message || 'Error sending message');
+                        showPopup(data?.error || data?.message || 'Error sending message', 'error');
                         return;
                     }
 
-                    alert(data?.message || 'Thank you for contacting! I will get back to you soon.');
+                    showPopup(data?.message || 'Thank you for contacting! I will get back to you soon.', 'success');
                     contactForm.reset();
                     // Prevent any browser navigation/redirect (e.g., Formspree thanks page)
                     if (typeof e !== 'undefined') e.preventDefault();
                     if (typeof e !== 'undefined') e.stopPropagation();
 
                 } catch (err) {
-                    alert('Server error');
+                    showPopup('Server error', 'error');
                 } finally {
                     contactForm.querySelector('button[type="submit"]')?.removeAttribute('disabled');
                     if (submitBtn) submitBtn.textContent = originalBtnText;
