@@ -500,12 +500,12 @@ app.get('/api/m365/licenses/summary', async (req, res) => {
       const alertEnabled = Boolean(r.alertEnabled);
 
       // Status based on available capacity (remaining licenses)
-      if (availablePct > 70) healthy++;
-      else if (availablePct >= 20) warning++;
+      if (availablePct > 20) healthy++;
+      else if (availablePct >= 10) warning++;
       else critical++;
 
-      // Active alerts: alertEnabled AND available <= threshold
-      if (alertEnabled && availablePct <= threshold) activeAlerts++;
+      // Active alerts: alertEnabled AND usage >= threshold
+      if (alertEnabled && usagePct >= threshold) activeAlerts++;
 
       totalAssigned += assigned;
       totalAvailable += available;

@@ -83,8 +83,10 @@
       font-size: 28px;
       font-weight: 700;
       letter-spacing: -0.5px;
-      color: #ffffff;
-      text-shadow: 0 0 20px rgba(41, 121, 255, 0.5);
+      background: linear-gradient(135deg, #fff 60%, var(--accent-blue));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
     }
 
     .header-left .subtitle {
@@ -584,8 +586,8 @@
       <div class="info-content">
         <div class="info-title">Health & Alert Logic</div>
         <div class="info-text">
-          <strong>Health Status</strong> is based on remaining license capacity: Healthy >70% available, Warning 20–70% available, Critical <20% available.
-          <strong>Alerts</strong> trigger when available license capacity falls below the configured threshold (Available % ≤ Threshold %). Status and alerts are independent.
+          <strong>Health Status</strong> is based on remaining license capacity: Healthy >20% available, Warning 10–20% available, Critical <10% available.
+          <strong>Alerts</strong> trigger when usage ≥ threshold% and alerts are enabled. Status and alerts are independent.
         </div>
       </div>
       <div class="threshold-legend">
@@ -715,12 +717,12 @@
       const availablePct = capacity > 0 ? Math.round((available / capacity) * 100) : 0;
       const threshold = Number(license.thresholdPercent || 80);
       const alertEnabled = Boolean(license.alertEnabled);
-      const alertTriggered = alertEnabled && (availablePct <= threshold);
+      const alertTriggered = alertEnabled && (usagePct >= threshold);
 
       // Health status based on available capacity
       let status;
-      if (availablePct > 70) status = 'Healthy';
-      else if (availablePct >= 20) status = 'Warning';
+      if (availablePct > 20) status = 'Healthy';
+      else if (availablePct >= 10) status = 'Warning';
       else status = 'Critical';
 
       let colorClass;

@@ -67,29 +67,55 @@ app.get('/api/ad/users', async (req, res) => {
     const search = String(req.query.search || '').trim();
     const table = AIVEN_AD_USERS_TABLE || 'ad_users';
 
+    // Minimal, resilient query:
+    // - If columns differ, you can edit this query to match your schema.
+    // - We try a few common column names.
+    // If your schema is known, replace this query with exact columns.
+
     const baseSQL = `SELECT * FROM \`${table}\``;
+
+    // Try to find a reasonable text search column.
+    // NOTE: MySQL won't let us parameterize column names; we choose a common set.
+    // We use COALESCE/CASE to avoid errors if some columns don't exist.
+    // If your schema doesn't contain these columns, update the query.
+
     let whereSQL = '';
     const params = [];
 
     if (search) {
       const candidateCols = ['uid', 'username', 'cn', 'email', 'department', 'title', 'samAccountName', 'displayName', 'userPrincipalName', 'orgUnit', 'jobTitle', 'id', 'user_id'];
+
+      // Determine which columns exist in the table so we don't error on unknown columns.
       const [colsRows] = await pool.query(`SHOW COLUMNS FROM \`${table}\``);
       const existingCols = new Set((colsRows || []).map((r) => r.Field));
+
       const usedCols = candidateCols.filter((c) => existingCols.has(c));
 
       if (usedCols.length) {
+        // Build OR list using only columns that exist.
         const orParts = usedCols.map((col) => ` (CAST(\`${col}\` AS CHAR) LIKE ?) `);
         whereSQL = ` WHERE ${orParts.join(' OR ')} `;
         for (let i = 0; i < usedCols.length; i++) params.push(`%${search}%`);
+      } else {
+        // No searchable columns exist; skip WHERE clause.
+        whereSQL = '';
       }
+
+      // DEBUG (safe): if still failing due to unknown columns, uncomment and restart.
+      // console.log('search=', search, 'existingCols=', Array.from(existingCols));
+
     }
 
+
+    // Limit for demo performance
     const limit = Number(req.query.limit || 200);
+
     const sql = `${baseSQL}${whereSQL} ORDER BY department IS NULL, department ASC, cn ASC LIMIT ?`;
     params.push(limit);
 
     const [rows] = await pool.query(sql, params);
 
+    // Normalize to a predictable shape for the UI
     const users = rows.map((r) => {
       const status = r.status ?? r.enabled ?? r.accountStatus ?? null;
       return {
@@ -122,9 +148,11 @@ app.post('/api/ad/users', async (req, res) => {
       return res.status(400).json({ ok: false, error: 'name is required' });
     }
 
+    // Determine available columns
     const [colsRows] = await pool.query(`SHOW COLUMNS FROM \`${table}\``);
     const existingCols = new Set((colsRows || []).map((r) => r.Field));
 
+    // Build dynamic INSERT
     const insertFields = {};
     const username = (name || '').toLowerCase().replace(/\s+/g, '.');
 
@@ -134,11 +162,14 @@ app.post('/api/ad/users', async (req, res) => {
     if (existingCols.has('email') && email) insertFields.email = email;
     if (existingCols.has('department') && department) insertFields.department = department;
     if (existingCols.has('title') && title) insertFields.title = title;
+    // Use proper ENUM value for status
     if (existingCols.has('status')) {
       const validStatus = await findValidStatusValue(table, 'status', ['Active', 'active']);
       insertFields.status = validStatus;
     }
     if (existingCols.has('role') && title) insertFields.role = title;
+
+    // Set a default password/manager field if columns exist
     if (existingCols.has('manager') && manager) insertFields.manager = manager;
     if (existingCols.has('created_at')) insertFields.created_at = new Date().toISOString().slice(0, 19).replace('T', ' ');
 
@@ -160,20 +191,24 @@ app.post('/api/ad/users', async (req, res) => {
   }
 });
 
+// Helper: find a valid status value from ENUM column
 async function findValidStatusValue(table, statusCol, candidates) {
   try {
     const [colInfo] = await pool.query(`SHOW COLUMNS FROM \`${table}\` WHERE Field = ?`, [statusCol]);
     if (!colInfo || !colInfo.length || !colInfo[0].Type) {
+      // Not an ENUM, return first candidate
       return candidates[0];
     }
-    const typeDef = colInfo[0].Type;
+    const typeDef = colInfo[0].Type; // e.g. "enum('Active','Inactive','Pending')"
     const match = typeDef.match(/^enum\((.*)\)$/i);
-    if (!match) return candidates[0];
+    if (!match) return candidates[0]; // Not an ENUM
     const enumValues = match[1].split(',').map((v) => v.replace(/^'|'$/g, ''));
+    // Try each candidate in order
     for (const candidate of candidates) {
       const found = enumValues.find((ev) => ev.toLowerCase() === candidate.toLowerCase());
       if (found) return found;
     }
+    // Fallback: first ENUM value
     return enumValues[0] || candidates[0];
   } catch {
     return candidates[0];
@@ -202,6 +237,7 @@ app.put('/api/ad/users/:id/disable', async (req, res) => {
       return res.status(500).json({ ok: false, error: 'No ID column found on table' });
     }
 
+    // Find the correct ENUM value for disabled/inactive
     let setValue;
     if (statusCol === 'enabled') {
       setValue = 0;
@@ -239,6 +275,7 @@ app.put('/api/ad/users/:id/enable', async (req, res) => {
       return res.status(500).json({ ok: false, error: 'No ID column found on table' });
     }
 
+    // Find the correct ENUM value for active
     let setValue;
     if (statusCol === 'enabled') {
       setValue = 1;
@@ -268,6 +305,7 @@ app.put('/api/ad/users/:id/reset-password', async (req, res) => {
       return res.status(500).json({ ok: false, error: 'No ID column found on table' });
     }
 
+    // Simulate password reset - update a password_last_set timestamp if column exists
     if (existingCols.has('password_last_set')) {
       await pool.query(`UPDATE \`${table}\` SET \`password_last_set\` = NOW() WHERE \`${idCol}\` = ?`, [id]);
     }
@@ -293,9 +331,11 @@ app.delete('/api/ad/users/:id', async (req, res) => {
       return res.status(500).json({ ok: false, error: 'No ID column found on table' });
     }
 
+    // Try to delete, or if no delete privilege, set status to disabled
     try {
       await pool.query(`DELETE FROM \`${table}\` WHERE \`${idCol}\` = ?`, [id]);
     } catch (deleteErr) {
+      // Fallback: set status to disabled if DELETE fails
       if (existingCols.has('status')) {
         await pool.query(`UPDATE \`${table}\` SET \`status\` = 'deleted' WHERE \`${idCol}\` = ?`, [id]);
       } else {
@@ -313,6 +353,7 @@ app.delete('/api/ad/users/:id', async (req, res) => {
 app.get('/api/ad/tree', async (_req, res) => {
   if (!hasDb) return res.status(503).json({ ok: false, error: 'DB env vars missing' });
   try {
+    // Build a simple AD-like tree from departments.
     const table = AIVEN_AD_USERS_TABLE || 'ad_users';
     const [rows] = await pool.query(`SELECT DISTINCT department FROM \`${table}\` ORDER BY department IS NULL, department ASC`);
 
@@ -340,17 +381,25 @@ app.get('/api/ad/tree', async (_req, res) => {
   }
 });
 
+/**
+ * GET /api/ad/health-check
+ * Returns all AD health check records ordered by LastChecked DESC.
+ * Uses the existing DB pool and configurable table name.
+ */
 app.get('/api/ad/health-check', async (req, res) => {
   if (!hasDb) return res.status(503).json({ ok: false, error: 'DB env vars missing' });
   try {
     const table = AIVEN_AD_HEALTH_TABLE || 'ADHealthCheck';
 
+    // Verify the table exists
     const [tables] = await pool.query("SHOW TABLES LIKE ?", [table]);
     if (!tables || tables.length === 0) {
       return res.json({ ok: true, count: 0, records: [], message: 'No health check data available' });
     }
 
+    // Fetch all records ordered by LastChecked DESC
     const [rows] = await pool.query(`SELECT * FROM \`${table}\` ORDER BY LastChecked DESC`);
+
     res.json({ ok: true, count: rows.length, records: rows });
   } catch (err) {
     console.error('[AD Health Check] Error:', err);
@@ -363,16 +412,23 @@ app.get('/api/health', (_req, res) => {
   return res.json({ ok: true });
 });
 
+/**
+ * POST /api/ad/health-check/scan
+ * Triggers a scan update - sets LastChecked to current time for all records
+ * This simulates performing a health check scan
+ */
 app.post('/api/ad/health-check/scan', async (req, res) => {
   if (!hasDb) return res.status(503).json({ ok: false, error: 'DB env vars missing' });
   try {
     const table = AIVEN_AD_HEALTH_TABLE || 'ADHealthCheck';
 
+    // Verify the table exists
     const [tables] = await pool.query("SHOW TABLES LIKE ?", [table]);
     if (!tables || tables.length === 0) {
       return res.status(404).json({ ok: false, error: 'Health check table not found' });
     }
 
+    // Check if LastChecked column exists
     const [colsRows] = await pool.query(`SHOW COLUMNS FROM \`${table}\``);
     const existingCols = new Set((colsRows || []).map((r) => r.Field));
     
@@ -380,6 +436,7 @@ app.post('/api/ad/health-check/scan', async (req, res) => {
       return res.status(500).json({ ok: false, error: 'LastChecked column not found in table' });
     }
 
+    // Update LastChecked to current time for all records
     const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
     const [result] = await pool.query(
       `UPDATE \`${table}\` SET \`LastChecked\` = ?`,
@@ -400,17 +457,23 @@ app.post('/api/ad/health-check/scan', async (req, res) => {
   }
 });
 
+/**
+ * POST /api/ad/health-check/scan/:dcName
+ * Triggers a scan update for a specific DC
+ */
 app.post('/api/ad/health-check/scan/:dcName', async (req, res) => {
   if (!hasDb) return res.status(503).json({ ok: false, error: 'DB env vars missing' });
   try {
     const table = AIVEN_AD_HEALTH_TABLE || 'ADHealthCheck';
     const { dcName } = req.params;
 
+    // Verify the table exists
     const [tables] = await pool.query("SHOW TABLES LIKE ?", [table]);
     if (!tables || tables.length === 0) {
       return res.status(404).json({ ok: false, error: 'Health check table not found' });
     }
 
+    // Check if LastChecked column exists
     const [colsRows] = await pool.query(`SHOW COLUMNS FROM \`${table}\``);
     const existingCols = new Set((colsRows || []).map((r) => r.Field));
     
@@ -418,6 +481,7 @@ app.post('/api/ad/health-check/scan/:dcName', async (req, res) => {
       return res.status(500).json({ ok: false, error: 'LastChecked column not found in table' });
     }
 
+    // Find the DCName column
     let dcCol = null;
     if (existingCols.has('DCName')) dcCol = 'DCName';
     else if (existingCols.has('dc_name')) dcCol = 'dc_name';
@@ -427,6 +491,7 @@ app.post('/api/ad/health-check/scan/:dcName', async (req, res) => {
       return res.status(500).json({ ok: false, error: 'DC name column not found in table' });
     }
 
+    // Update LastChecked to current time for the specific DC
     const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
     const [result] = await pool.query(
       `UPDATE \`${table}\` SET \`LastChecked\` = ? WHERE \`${dcCol}\` = ?`,
@@ -460,6 +525,7 @@ app.get('/api/m365/licenses', async (req, res) => {
   try {
     const table = AIVEN_M365_LICENSE_TABLE || 'm365_licenses';
 
+    // Verify table exists
     const [tables] = await pool.query("SHOW TABLES LIKE ?", [table]);
     if (!tables || tables.length === 0) {
       return res.json({ ok: true, count: 0, licenses: [], message: 'No license data available' });
@@ -480,39 +546,27 @@ app.get('/api/m365/licenses/summary', async (req, res) => {
 
     const [tables] = await pool.query("SHOW TABLES LIKE ?", [table]);
     if (!tables || tables.length === 0) {
-      return res.json({ ok: true, summary: { total: 0, healthy: 0, warning: 0, critical: 0, activeAlerts: 0, totalAssigned: 0, totalAvailable: 0, overallUsagePct: 0 } });
+      return res.json({ ok: true, summary: { total: 0, healthy: 0, warning: 0, critical: 0, totalAssigned: 0, totalAvailable: 0 } });
     }
 
     const [rows] = await pool.query(`SELECT * FROM \`${table}\``);
 
     let healthy = 0, warning = 0, critical = 0;
-    let activeAlerts = 0;
     let totalAssigned = 0, totalAvailable = 0;
-    let totalUsagePct = 0;
 
     for (const r of rows) {
       const assigned = Number(r.totalAssigned || 0);
       const available = Number(r.totalAvailable || 0);
-      const capacity = assigned + available;
-      const usagePct = capacity > 0 ? (assigned / capacity) * 100 : 0;
-      const availablePct = capacity > 0 ? (available / capacity) * 100 : 0;
+      const total = assigned + available;
+      const usagePct = total > 0 ? (assigned / total) * 100 : 0;
       const threshold = Number(r.thresholdPercent || 80);
-      const alertEnabled = Boolean(r.alertEnabled);
-
-      // Status based on available capacity (remaining licenses)
-      if (availablePct > 70) healthy++;
-      else if (availablePct >= 20) warning++;
-      else critical++;
-
-      // Active alerts: alertEnabled AND available <= threshold
-      if (alertEnabled && availablePct <= threshold) activeAlerts++;
+      if (usagePct >= 95 || threshold <= 30) critical++;
+      else if (usagePct >= 50 && usagePct < 95 && threshold > 30) warning++;
+      else healthy++;
 
       totalAssigned += assigned;
       totalAvailable += available;
-      totalUsagePct += usagePct;
     }
-
-    const overallUsagePct = rows.length > 0 ? Math.round(totalUsagePct / rows.length) : 0;
 
     res.json({
       ok: true,
@@ -521,10 +575,9 @@ app.get('/api/m365/licenses/summary', async (req, res) => {
         healthy,
         warning,
         critical,
-        activeAlerts,
         totalAssigned,
         totalAvailable,
-        overallUsagePct
+        overallUsagePct: totalAvailable > 0 ? Math.round((totalAssigned / totalAvailable) * 100) : 0
       }
     });
   } catch (err) {
@@ -545,6 +598,7 @@ app.post('/api/m365/licenses/scan', async (req, res) => {
 
     const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
 
+    // Simulate scan: update usage numbers slightly to reflect changes
     const [result] = await pool.query(
       `UPDATE \`${table}\` SET \`lastChecked\` = ?, \`totalAssigned\` = \`totalAssigned\` + FLOOR(RAND() * 3) WHERE \`totalAssigned\` < \`totalAvailable\``,
       [now]
@@ -566,3 +620,4 @@ const port = Number(API_PORT || 3001);
 app.listen(port, () => {
   console.log(`Admin API listening on http://localhost:${port}`);
 });
+

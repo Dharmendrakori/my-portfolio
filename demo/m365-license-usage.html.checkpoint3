@@ -28,8 +28,6 @@
       --accent-orange-bg: rgba(255, 145, 0, 0.12);
       --accent-blue: #2979ff;
       --accent-blue-bg: rgba(41, 121, 255, 0.12);
-      --accent-yellow: #ffd600;
-      --accent-yellow-bg: rgba(255, 214, 0, 0.12);
       --shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
       --radius: 10px;
       --radius-sm: 6px;
@@ -83,8 +81,10 @@
       font-size: 28px;
       font-weight: 700;
       letter-spacing: -0.5px;
-      color: #ffffff;
-      text-shadow: 0 0 20px rgba(41, 121, 255, 0.5);
+      background: linear-gradient(135deg, #fff 60%, var(--accent-blue));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
     }
 
     .header-left .subtitle {
@@ -216,8 +216,6 @@
     .threshold-legend .legend-dot.green { background: var(--accent-green); }
     .threshold-legend .legend-dot.orange { background: var(--accent-orange); }
     .threshold-legend .legend-dot.red { background: var(--accent-red); }
-    .threshold-legend .legend-dot.yellow { background: var(--accent-yellow); }
-    .threshold-legend .legend-dot.gray { background: #757575; }
 
     /* Summary Cards */
     .summary-grid {
@@ -251,7 +249,6 @@
     .summary-card.healthy::before { background: var(--accent-green); }
     .summary-card.warning::before { background: var(--accent-orange); }
     .summary-card.critical::before { background: var(--accent-red); }
-    .summary-card.alerts::before { background: var(--accent-yellow); }
 
     .summary-card:hover {
       background: var(--bg-card-hover);
@@ -282,7 +279,6 @@
     .summary-card.healthy .card-value { color: var(--accent-green); }
     .summary-card.warning .card-value { color: var(--accent-orange); }
     .summary-card.critical .card-value { color: var(--accent-red); }
-    .summary-card.alerts .card-value { color: var(--accent-yellow); }
 
     /* Charts */
     .charts-row {
@@ -433,32 +429,6 @@
       color: var(--accent-red);
     }
 
-    .alert-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      padding: 3px 10px;
-      border-radius: 12px;
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 0.3px;
-    }
-
-    .alert-badge.triggered {
-      background: var(--accent-yellow-bg);
-      color: var(--accent-yellow);
-    }
-
-    .alert-badge.not-triggered {
-      background: var(--accent-green-bg);
-      color: var(--accent-green);
-    }
-
-    .alert-badge.disabled {
-      background: rgba(117, 117, 117, 0.12);
-      color: #757575;
-    }
-
     .usage-bar {
       display: flex;
       align-items: center;
@@ -582,17 +552,16 @@
     <div class="threshold-info">
       <div class="info-icon">ℹ️</div>
       <div class="info-content">
-        <div class="info-title">Health & Alert Logic</div>
+        <div class="info-title">Alert Thresholds</div>
         <div class="info-text">
-          <strong>Health Status</strong> is based on remaining license capacity: Healthy >70% available, Warning 20–70% available, Critical <20% available.
-          <strong>Alerts</strong> trigger when available license capacity falls below the configured threshold (Available % ≤ Threshold %). Status and alerts are independent.
+          Status is determined by each SKU's configured <strong>thresholdPercent</strong>:
+          Healthy if threshold ≥ 75%, Warning if threshold is between 40%–50%, Critical if threshold ≤ 30%.
         </div>
       </div>
       <div class="threshold-legend">
         <span class="legend-item"><span class="legend-dot green"></span> Healthy</span>
         <span class="legend-item"><span class="legend-dot orange"></span> Warning</span>
         <span class="legend-item"><span class="legend-dot red"></span> Critical</span>
-        <span class="legend-item"><span class="legend-dot yellow"></span> Alert Triggered</span>
       </div>
     </div>
 
@@ -617,11 +586,6 @@
         <div class="card-label">Critical</div>
         <div class="card-value" id="criticalCount">--</div>
       </div>
-      <div class="summary-card alerts">
-        <div class="card-icon">🔔</div>
-        <div class="card-label">Active Alerts</div>
-        <div class="card-value" id="activeAlerts">--</div>
-      </div>
       <div class="summary-card total">
         <div class="card-icon">👥</div>
         <div class="card-label">Total Assigned</div>
@@ -631,11 +595,6 @@
         <div class="card-icon">🏷️</div>
         <div class="card-label">Total Available</div>
         <div class="card-value" id="totalAvailable">--</div>
-      </div>
-      <div class="summary-card total">
-        <div class="card-icon">📊</div>
-        <div class="card-label">Avg Utilization</div>
-        <div class="card-value" id="avgUtilization">--</div>
       </div>
     </div>
 
@@ -650,15 +609,6 @@
         <h3>📈 Usage % by SKU</h3>
         <div class="chart-wrapper">
           <canvas id="usageChart"></canvas>
-        </div>
-      </div>
-    </div>
-
-    <div class="charts-row">
-      <div class="chart-card">
-        <h3>🔔 Alert Threshold vs Usage</h3>
-        <div class="chart-wrapper">
-          <canvas id="alertChart"></canvas>
         </div>
       </div>
     </div>
@@ -679,12 +629,9 @@
               <th>SKU Name</th>
               <th>Assigned</th>
               <th>Available</th>
-              <th>Usage %</th>
-              <th>Available %</th>
               <th>Threshold %</th>
+              <th>Usage %</th>
               <th>Status</th>
-              <th>Alert Enabled</th>
-              <th>Alert Triggered</th>
               <th>Last Checked</th>
             </tr>
           </thead>
@@ -701,61 +648,6 @@
     let filteredLicenses = [];
     let healthChartInstance = null;
     let usageChartInstance = null;
-    let alertChartInstance = null;
-
-    // ============================================================
-    // SINGLE SHARED CALCULATION LAYER
-    // All metrics derive from this function to ensure consistency
-    // ============================================================
-    function computeLicenseMetrics(license) {
-      const assigned = license.totalAssigned || 0;
-      const available = license.totalAvailable || 0;
-      const capacity = assigned + available;
-      const usagePct = capacity > 0 ? Math.round((assigned / capacity) * 100) : 0;
-      const availablePct = capacity > 0 ? Math.round((available / capacity) * 100) : 0;
-      const threshold = Number(license.thresholdPercent || 80);
-      const alertEnabled = Boolean(license.alertEnabled);
-      const alertTriggered = alertEnabled && (availablePct <= threshold);
-
-      // Health status based on available capacity
-      let status;
-      if (availablePct > 70) status = 'Healthy';
-      else if (availablePct >= 20) status = 'Warning';
-      else status = 'Critical';
-
-      let colorClass;
-      if (status === 'Critical') colorClass = 'red';
-      else if (status === 'Warning') colorClass = 'orange';
-      else colorClass = 'green';
-
-      return {
-        ...license,
-        assigned,
-        available,
-        capacity,
-        usagePct,
-        availablePct,
-        threshold,
-        alertEnabled,
-        alertTriggered,
-        status,
-        colorClass
-      };
-    }
-
-    function computeSummary(licenses) {
-      const metrics = licenses.map(computeLicenseMetrics);
-      const total = metrics.length;
-      const healthy = metrics.filter(m => m.status === 'Healthy').length;
-      const warning = metrics.filter(m => m.status === 'Warning').length;
-      const critical = metrics.filter(m => m.status === 'Critical').length;
-      const activeAlerts = metrics.filter(m => m.alertTriggered).length;
-      const totalAssigned = metrics.reduce((sum, m) => sum + m.assigned, 0);
-      const totalAvailable = metrics.reduce((sum, m) => sum + m.available, 0);
-      const avgUtilization = total > 0 ? Math.round(metrics.reduce((sum, m) => sum + m.usagePct, 0) / total) : 0;
-
-      return { total, healthy, warning, critical, activeAlerts, totalAssigned, totalAvailable, avgUtilization };
-    }
 
     // Clock
     function updateClock() {
@@ -820,6 +712,14 @@
       return data.licenses || [];
     }
 
+    async function fetchSummary() {
+      const res = await fetch(`${API_BASE}/api/m365/licenses/summary`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || 'Unknown error');
+      return data.summary;
+    }
+
     async function triggerScan() {
       const res = await fetch(`${API_BASE}/api/m365/licenses/scan`, {
         method: 'POST',
@@ -829,28 +729,41 @@
       return await res.json();
     }
 
-    // Render: Summary Cards - derived from same computed dataset
-    function renderSummary(licenses) {
-      const summary = computeSummary(licenses);
-      document.getElementById('totalSkus').textContent = summary.total;
-      document.getElementById('healthyCount').textContent = summary.healthy;
-      document.getElementById('warningCount').textContent = summary.warning;
-      document.getElementById('criticalCount').textContent = summary.critical;
-      document.getElementById('activeAlerts').textContent = summary.activeAlerts;
-      document.getElementById('totalAssigned').textContent = summary.totalAssigned.toLocaleString();
-      document.getElementById('totalAvailable').textContent = summary.totalAvailable.toLocaleString();
-      document.getElementById('avgUtilization').textContent = summary.avgUtilization + '%';
+    // Business Logic
+    function getLicenseStatus(license) {
+      const threshold = Number(license.thresholdPercent || 80);
+      if (threshold >= 75) return 'Healthy';
+      if (threshold >= 40 && threshold <= 50) return 'Warning';
+      if (threshold <= 30) return 'Critical';
+      return 'Healthy';
     }
 
-    // Render: Charts - derived from same computed dataset
-    function renderCharts(licenses) {
-      const metrics = licenses.map(computeLicenseMetrics);
+    function getUsageColor(license) {
+      const threshold = Number(license.thresholdPercent || 80);
+      if (threshold >= 75) return 'green';
+      if (threshold >= 40 && threshold <= 50) return 'orange';
+      if (threshold <= 30) return 'red';
+      return 'green';
+    }
 
+    // Render: Summary Cards
+    function renderSummary(summary) {
+      document.getElementById('totalSkus').textContent = summary.total || 0;
+      document.getElementById('healthyCount').textContent = summary.healthy || 0;
+      document.getElementById('warningCount').textContent = summary.warning || 0;
+      document.getElementById('criticalCount').textContent = summary.critical || 0;
+      document.getElementById('totalAssigned').textContent = (summary.totalAssigned || 0).toLocaleString();
+      document.getElementById('totalAvailable').textContent = (summary.totalAvailable || 0).toLocaleString();
+    }
+
+    // Render: Charts
+    function renderCharts(licenses) {
       // Health Distribution Pie Chart
       let healthy = 0, warning = 0, critical = 0;
-      for (const m of metrics) {
-        if (m.status === 'Healthy') healthy++;
-        else if (m.status === 'Warning') warning++;
+      for (const l of licenses) {
+        const status = getLicenseStatus(l);
+        if (status === 'Healthy') healthy++;
+        else if (status === 'Warning') warning++;
         else critical++;
       }
 
@@ -888,15 +801,23 @@
         }
       });
 
-      // Usage % Bar Chart - sorted by highest usage first
-      const sortedMetrics = [...metrics].sort((a, b) => b.usagePct - a.usagePct);
-
+      // Usage % Bar Chart
       const barCtx = document.getElementById('usageChart').getContext('2d');
       if (usageChartInstance) usageChartInstance.destroy();
 
-      const labels = sortedMetrics.map(m => m.skuName || 'Unknown');
-      const usageData = sortedMetrics.map(m => m.usagePct);
-      const barColors = sortedMetrics.map(m => m.colorClass);
+      const labels = licenses.map(l => l.skuName || 'Unknown');
+      const usageData = licenses.map(l => {
+        const total = (l.totalAssigned || 0) + (l.totalAvailable || 0);
+        return total > 0 ? Math.round(((l.totalAssigned || 0) / total) * 100) : 0;
+      });
+      const barColors = usageData.map((pct, i) => {
+        const license = licenses[i];
+        const threshold = Number(license.thresholdPercent || 80);
+        if (threshold >= 75) return getComputedStyle(document.documentElement).getPropertyValue('--accent-green').trim() || '#00c853';
+        if (threshold >= 40 && threshold <= 50) return getComputedStyle(document.documentElement).getPropertyValue('--accent-orange').trim() || '#ff9100';
+        if (threshold <= 30) return getComputedStyle(document.documentElement).getPropertyValue('--accent-red').trim() || '#ff1744';
+        return getComputedStyle(document.documentElement).getPropertyValue('--accent-green').trim() || '#00c853';
+      });
 
       usageChartInstance = new Chart(barCtx, {
         type: 'bar',
@@ -905,11 +826,7 @@
           datasets: [{
             label: 'Usage %',
             data: usageData,
-            backgroundColor: barColors.map(c => {
-              if (c === 'red') return getComputedStyle(document.documentElement).getPropertyValue('--accent-red').trim() || '#ff1744';
-              if (c === 'orange') return getComputedStyle(document.documentElement).getPropertyValue('--accent-orange').trim() || '#ff9100';
-              return getComputedStyle(document.documentElement).getPropertyValue('--accent-green').trim() || '#00c853';
-            }),
+            backgroundColor: barColors,
             borderRadius: 4,
             borderSkipped: false,
             barPercentage: 0.6
@@ -940,75 +857,9 @@
           plugins: { legend: { display: false } }
         }
       });
-
-      // Alert Threshold Chart
-      const alertCtx = document.getElementById('alertChart').getContext('2d');
-      if (alertChartInstance) alertChartInstance.destroy();
-
-      const alertLabels = metrics.map(m => m.skuName || 'Unknown');
-      const usageValues = metrics.map(m => m.usagePct);
-      const thresholdValues = metrics.map(m => m.threshold);
-
-      alertChartInstance = new Chart(alertCtx, {
-        type: 'bar',
-        data: {
-          labels: alertLabels,
-          datasets: [
-            {
-              label: 'Usage %',
-              data: usageValues,
-              backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--accent-blue').trim() || '#2979ff',
-              borderRadius: 4,
-              borderSkipped: false,
-              barPercentage: 0.5
-            },
-            {
-              label: 'Threshold %',
-              data: thresholdValues,
-              backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--accent-orange').trim() || '#ff9100',
-              borderRadius: 4,
-              borderSkipped: false,
-              barPercentage: 0.5
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: true,
-          indexAxis: 'y',
-          scales: {
-            x: {
-              min: 0,
-              max: 100,
-              grid: { color: 'rgba(42, 50, 80, 0.5)' },
-              ticks: {
-                color: getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim() || '#5a6488',
-                font: { size: 11 }
-              }
-            },
-            y: {
-              grid: { display: false },
-              ticks: {
-                color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim() || '#8b95b5',
-                font: { size: 11 }
-              }
-            }
-          },
-          plugins: {
-            legend: {
-              position: 'bottom',
-              labels: {
-                color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim() || '#8b95b5',
-                padding: 16,
-                font: { size: 12 }
-              }
-            }
-          }
-        }
-      });
     }
 
-    // Render: Table - derived from same computed dataset
+    // Render: Table
     function renderTable(licenses) {
       const tbody = document.getElementById('tableBody');
       if (!tbody) return;
@@ -1016,7 +867,7 @@
       if (!licenses.length) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="10" class="state-message">
+            <td colspan="7" class="state-message">
               <div class="icon">📋</div>
               <h3>No License Data</h3>
               <p>No M365 license records found. Run a scan to populate data.</p>
@@ -1026,45 +877,33 @@
         return;
       }
 
-      const metrics = licenses.map(computeLicenseMetrics);
-
       let html = '';
-      for (const m of metrics) {
-        let alertBadgeClass, alertBadgeText;
-        if (!m.alertEnabled) {
-          alertBadgeClass = 'disabled';
-          alertBadgeText = 'Disabled';
-        } else if (m.alertTriggered) {
-          alertBadgeClass = 'triggered';
-          alertBadgeText = 'Triggered';
-        } else {
-          alertBadgeClass = 'not-triggered';
-          alertBadgeText = 'Not Triggered';
-        }
+      for (const l of licenses) {
+        const total = (l.totalAssigned || 0) + (l.totalAvailable || 0);
+        const usagePct = total > 0 ? Math.round(((l.totalAssigned || 0) / total) * 100) : 0;
+        const status = getLicenseStatus(l);
+        const colorClass = getUsageColor(l);
 
         html += '<tr>';
-        html += `<td><strong>${escHtml(m.skuName || '—')}</strong></td>`;
-        html += `<td>${m.assigned.toLocaleString()}</td>`;
-        html += `<td>${m.available.toLocaleString()}</td>`;
+        html += `<td><strong>${escHtml(l.skuName || '—')}</strong></td>`;
+        html += `<td>${(l.totalAssigned || 0).toLocaleString()}</td>`;
+        html += `<td>${(l.totalAvailable || 0).toLocaleString()}</td>`;
+        html += `<td>${Number(l.thresholdPercent || 80)}%</td>`;
         html += `<td>
           <div class="usage-bar">
             <div class="bar">
-              <div class="fill ${m.colorClass}" style="width:${m.usagePct}%"></div>
+              <div class="fill ${colorClass}" style="width:${usagePct}%"></div>
             </div>
-            <span class="usage-text ${m.colorClass}">${m.usagePct}%</span>
+            <span class="usage-text ${colorClass}">${usagePct}%</span>
           </div>
         </td>`;
-        html += `<td>${m.availablePct}%</td>`;
-        html += `<td>${m.threshold}%</td>`;
-        html += `<td><span class="status-badge ${m.status.toLowerCase()}">● ${m.status}</span></td>`;
-        html += `<td>${m.alertEnabled ? '✅ Yes' : '❌ No'}</td>`;
-        html += `<td><span class="alert-badge ${alertBadgeClass}">● ${alertBadgeText}</span></td>`;
-        html += `<td>${m.lastChecked ? new Date(m.lastChecked).toLocaleString() : '—'}</td>`;
+        html += `<td><span class="status-badge ${status.toLowerCase()}">● ${status}</span></td>`;
+        html += `<td>${l.lastChecked ? new Date(l.lastChecked).toLocaleString() : '—'}</td>`;
         html += '</tr>';
       }
 
       tbody.innerHTML = html;
-      document.getElementById('recordCount').textContent = `${metrics.length} records`;
+      document.getElementById('recordCount').textContent = `${licenses.length} records`;
     }
 
     // Search & Filter
@@ -1116,7 +955,7 @@
       if (tbody) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="10" class="state-message">
+            <td colspan="7" class="state-message">
               <div class="icon">⏳</div>
               <h3>Loading license data...</h3>
             </td>
@@ -1124,12 +963,15 @@
       }
 
       try {
-        const licenses = await fetchLicenses();
+        const [licenses, summary] = await Promise.all([
+          fetchLicenses(),
+          fetchSummary()
+        ]);
 
         allLicenses = licenses;
         filteredLicenses = [...licenses];
 
-        renderSummary(licenses);
+        renderSummary(summary);
         renderCharts(licenses);
         renderTable(licenses);
       } catch (err) {
@@ -1137,7 +979,7 @@
         if (tbody) {
           tbody.innerHTML = `
             <tr>
-              <td colspan="10" class="state-message error-message">
+              <td colspan="7" class="state-message error-message">
                 <div class="icon">⚠️</div>
                 <h3>Failed to Load Data</h3>
                 <p>${escHtml(err.message || 'Could not connect to the server.')}</p>

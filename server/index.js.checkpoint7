@@ -504,8 +504,8 @@ app.get('/api/m365/licenses/summary', async (req, res) => {
       else if (availablePct >= 20) warning++;
       else critical++;
 
-      // Active alerts: alertEnabled AND available <= threshold
-      if (alertEnabled && availablePct <= threshold) activeAlerts++;
+      // Active alerts: alertEnabled AND usage >= threshold
+      if (alertEnabled && usagePct >= threshold) activeAlerts++;
 
       totalAssigned += assigned;
       totalAvailable += available;
