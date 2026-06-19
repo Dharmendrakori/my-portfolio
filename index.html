@@ -1442,11 +1442,10 @@
                 </div>
 
                 <div class="contact-form reveal">
-                    <form id="contactForm" action="https://formspree.io/f/xrevneoy" method="POST">
-
-
+                    <form id="contactForm" action="#" method="POST">
 
                         <div class="form-group">
+
                             <label for="name">Your Name</label>
                             <input type="text" id="name" name="name" placeholder="John Doe" required>
                         </div>
@@ -1802,7 +1801,59 @@
         })();
 
 
-        // Contact form: submit handled by Formspree via the <form action="https://formspree.io/f/xrevneoy"> attribute.
+        // Contact form: submit to Render backend (/api/contact) which forwards to Formspree.
+        const contactForm = document.getElementById('contactForm');
+        if (contactForm) {
+            contactForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                const name = document.getElementById('name')?.value?.trim();
+                const email = document.getElementById('email')?.value?.trim();
+                const subject = document.getElementById('subject')?.value?.trim();
+                const message = document.getElementById('message')?.value?.trim();
+
+                // Preserve existing required attributes/UX; simple extra validation for better errors.
+                if (!name || !email || !subject || !message) return;
+
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailRegex.test(email)) return;
+
+                // Keep existing behavior with HTML5 validation UI.
+                contactForm.querySelector('button[type="submit"]')?.setAttribute('disabled', 'true');
+                const submitBtn = contactForm.querySelector('button[type="submit"]');
+                const originalBtnText = submitBtn?.textContent;
+                if (submitBtn) submitBtn.textContent = 'Sending...';
+
+                try {
+                    const resp = await fetch('https://portfolio-api-3sx8.onrender.com/api/contact', {
+
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                        body: JSON.stringify({
+                            name,
+                            email,
+                            message: message
+                        })
+                    });
+
+                    const data = await resp.json().catch(() => ({}));
+
+                    if (!resp.ok || !data.ok) {
+                        alert(data?.error || data?.message || 'Error sending message');
+                        return;
+                    }
+
+                    alert(data?.message || 'Thank you for contacting! I will get back to you soon.');
+                    contactForm.reset();
+                } catch (err) {
+                    alert('Server error');
+                } finally {
+                    contactForm.querySelector('button[type="submit"]')?.removeAttribute('disabled');
+                    if (submitBtn) submitBtn.textContent = originalBtnText;
+                }
+            });
+        }
+
 
 
 

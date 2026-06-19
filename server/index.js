@@ -20,11 +20,10 @@ import mysql from 'mysql2/promise';
 const app = express();
 
 
-// Use native fetch in Node.js 18+ (Render)
-
 const corsOptions = {
   origin: function (origin, callback) {
     // Allow requests without an Origin (like mobile apps, curl, server-to-server)
+
     if (!origin) return callback(null, true);
     if (!allowedOrigin) return callback(new Error('ALLOWED_ORIGIN is not configured'));
     if (origin === allowedOrigin) return callback(null, true);
@@ -439,8 +438,10 @@ app.post('/api/contact', async (req, res) => {
   if (!messageStr || messageStr.length < 10) return res.status(400).json({ ok: false, error: 'message must be at least 10 characters' });
 
   try {
-    // Forward as JSON (Formspree supports JSON + form fields)
+
+// Forward as JSON (Formspree supports JSON + form fields)
     const resp = await fetch(endpoint, {
+
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
