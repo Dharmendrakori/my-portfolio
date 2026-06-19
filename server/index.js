@@ -13,14 +13,15 @@ if (process.env.NODE_ENV !== 'production') {
 
 import express from 'express';
 
+
 import cors from 'cors';
 import mysql from 'mysql2/promise';
 
-import fetch from 'node-fetch';
-
 const app = express();
 
-const allowedOrigin = process.env.ALLOWED_ORIGIN;
+
+// Use native fetch in Node.js 18+ (Render)
+
 const corsOptions = {
   origin: function (origin, callback) {
     // Allow requests without an Origin (like mobile apps, curl, server-to-server)

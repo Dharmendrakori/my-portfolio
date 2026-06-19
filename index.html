@@ -1442,7 +1442,8 @@
                 </div>
 
                 <div class="contact-form reveal">
-                    <form id="contactForm" action="/contact" method="POST">
+                    <form id="contactForm" action="https://formspree.io/f/xrevneoy" method="POST">
+
 
 
                         <div class="form-group">
@@ -1801,65 +1802,8 @@
         })();
 
 
-        // Contact form -> submit to backend /contact (no redirect)
+        // Contact form: submit handled by Formspree via the <form action="https://formspree.io/f/xrevneoy"> attribute.
 
-        const contactForm = document.getElementById('contactForm');
-        if (contactForm) {
-            contactForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-
-                const form = e.target;
-                const submitButton = form.querySelector('button[type="submit"]');
-
-                try {
-                    submitButton && (submitButton.disabled = true);
-
-                    const formData = new FormData(form);
-
-                    const resp = await fetch('/contact', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            name: formData.get('name') || '',
-                            email: formData.get('email') || '',
-                            message: formData.get('message') || ''
-                        })
-                    });
-
-
-                    if (!resp.ok) {
-                        throw new Error('Form submission failed');
-                    }
-
-                    form.reset();
-
-                    // Show inline success message (stays on the page)
-                    let msg = document.getElementById('contactSuccessMessage');
-
-                    if (!msg) {
-                        msg = document.createElement('div');
-                        msg.id = 'contactSuccessMessage';
-                        msg.style.marginTop = '1.25rem';
-                        msg.style.padding = '0.9rem 1rem';
-                        msg.style.border = '1px solid rgba(0, 255, 65, 0.25)';
-                        msg.style.borderRadius = '10px';
-                        msg.style.background = 'rgba(0, 255, 65, 0.08)';
-                        msg.style.color = '#ffffff';
-                        msg.style.fontWeight = '600';
-                        msg.style.textAlign = 'center';
-                        form.appendChild(msg);
-                    }
-                    msg.textContent = 'Thank you for contacting! I will get back to you soon.';
-                } catch (err) {
-                    alert('Sorry—something went wrong. Please try again.');
-                } finally {
-                    submitButton && (submitButton.disabled = false);
-                }
-            });
-        }
 
 
     </script>
