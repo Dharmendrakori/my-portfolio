@@ -1812,15 +1812,25 @@
                 const subject = document.getElementById('subject')?.value?.trim();
                 const message = document.getElementById('message')?.value?.trim();
 
+                console.log('Contact form submit intercepted');
+                console.log('Submitting via Render API');
+
                 // Preserve existing required attributes/UX; simple extra validation for better errors.
-                if (!name || !email || !subject || !message) return;
+                if (!name || !email || !subject || !message) {
+                    console.log('Validation failed: missing fields');
+                    return;
+                }
 
                 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                if (!emailRegex.test(email)) return;
+                if (!emailRegex.test(email)) {
+                    console.log('Validation failed: bad email');
+                    return;
+                }
 
                 // Keep existing behavior with HTML5 validation UI.
                 contactForm.querySelector('button[type="submit"]')?.setAttribute('disabled', 'true');
                 const submitBtn = contactForm.querySelector('button[type="submit"]');
+
                 const originalBtnText = submitBtn?.textContent;
                 if (submitBtn) submitBtn.textContent = 'Sending...';
 
