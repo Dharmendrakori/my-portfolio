@@ -10,5 +10,17 @@ export default defineConfig(async () => {
     const m = await import('./.vite-source-tags.js');
     plugins.push(m.sourceTags());
   } catch {}
-  return { plugins };
+  return {
+    plugins,
+    preview: {
+      port: 4173,
+      host: true,
+      fallback: 'index.html',
+    },
+    server: {
+      port: 5173,
+      host: true,
+      fallback: 'index.html',
+    },
+  };
 })

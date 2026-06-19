@@ -29,7 +29,8 @@ const {
   API_PORT,
   AIVEN_AD_USERS_TABLE,
   AIVEN_AD_HEALTH_TABLE,
-  AIVEN_M365_LICENSE_TABLE
+  AIVEN_M365_LICENSE_TABLE,
+  AIVEN_DHCP_HEALTH_TABLE
 } = process.env;
 
 if (!AIVEN_DB_HOST || !AIVEN_DB_USER || !AIVEN_DB_PASSWORD || !AIVEN_DB_NAME) {
@@ -559,6 +560,82 @@ app.post('/api/m365/licenses/scan', async (req, res) => {
   } catch (err) {
     console.error('[M365 Licenses Scan] Error:', err);
     res.status(500).json({ ok: false, error: err?.message || 'Server error' });
+  }
+});
+
+// ============================================================
+// DHCP Health Check Automation
+// ============================================================
+
+app.get('/api/dhcp-health', async (req, res) => {
+  if (!hasDb) return res.status(503).json({ success: false, error: 'DB env vars missing' });
+  try {
+    const table = AIVEN_DHCP_HEALTH_TABLE || 'DHCP_Health_Check';
+
+    const [tables] = await pool.query("SHOW TABLES LIKE ?", [table]);
+    if (!tables || tables.length === 0) {
+      return res.json({ success: true, data: [], message: 'No DHCP health data available' });
+    }
+
+    const [rows] = await pool.query(`SELECT Id, DHCPServer, PingStatus, DHCPServiceStatus, ScopeCount, UsagePercentage, FailoverPartner, FailoverMode, LastChecked FROM \`${table}\` ORDER BY DHCPServer ASC`);
+    res.json({ success: true, data: rows });
+  } catch (err) {
+    console.error('[DHCP Health] Error:', err);
+    res.status(500).json({ success: false, error: err?.message || 'Server error' });
+  }
+});
+
+app.get('/api/dhcp-health/summary', async (req, res) => {
+  if (!hasDb) return res.status(503).json({ success: false, error: 'DB env vars missing' });
+  try {
+    const table = AIVEN_DHCP_HEALTH_TABLE || 'DHCP_Health_Check';
+
+    const [tables] = await pool.query("SHOW TABLES LIKE ?", [table]);
+    if (!tables || tables.length === 0) {
+      return res.json({ success: true, summary: { totalServers: 0, reachableServers: 0, runningServices: 0, warningServers: 0, criticalServers: 0, avgScopeUtilization: 0 } });
+    }
+
+    const [rows] = await pool.query(`SELECT * FROM \`${table}\``);
+
+    let totalServers = rows.length;
+    let reachableServers = 0;
+    let runningServices = 0;
+    let warningServers = 0;
+    let criticalServers = 0;
+    let totalUsage = 0;
+
+    for (const r of rows) {
+      const ping = String(r.PingStatus || '').toLowerCase() === 'true' || r.PingStatus === 1 || r.PingStatus === '1';
+      const service = String(r.DHCPServiceStatus || '').toLowerCase() === 'running';
+      const usage = Number(r.UsagePercentage || 0);
+
+      if (ping) reachableServers++;
+      if (service) runningServices++;
+      totalUsage += usage;
+
+      if (!ping || !service || usage > 90) {
+        criticalServers++;
+      } else if (usage >= 80) {
+        warningServers++;
+      }
+    }
+
+    const avgScopeUtilization = totalServers > 0 ? Math.round(totalUsage / totalServers) : 0;
+
+    res.json({
+      success: true,
+      summary: {
+        totalServers,
+        reachableServers,
+        runningServices,
+        warningServers,
+        criticalServers,
+        avgScopeUtilization
+      }
+    });
+  } catch (err) {
+    console.error('[DHCP Health Summary] Error:', err);
+    res.status(500).json({ success: false, error: err?.message || 'Server error' });
   }
 });
 
