@@ -1,0 +1,1355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AD Health Check Automation</title>
+
+  <!-- Chart.js for dashboard charts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+
+  <style>
+    /* ============================================================
+       CSS Variable Definitions — Enterprise Theme
+       ============================================================ */
+    :root {
+      --bg-primary: #0b0e17;
+      --bg-secondary: #131724;
+      --bg-card: #1a2035;
+      --bg-card-hover: #1f2740;
+      --border-color: #2a3250;
+      --text-primary: #e8edf5;
+      --text-secondary: #8b95b5;
+      --text-muted: #5a6488;
+      --accent-green: #00c853;
+      --accent-green-bg: rgba(0, 200, 83, 0.12);
+      --accent-red: #ff1744;
+      --accent-red-bg: rgba(255, 23, 68, 0.12);
+      --accent-orange: #ff9100;
+      --accent-orange-bg: rgba(255, 145, 0, 0.12);
+      --accent-blue: #2979ff;
+      --accent-blue-bg: rgba(41, 121, 255, 0.12);
+      --shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+      --radius: 10px;
+      --radius-sm: 6px;
+      --transition: all 0.2s ease;
+      --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    }
+
+    /* ============================================================
+       Reset & Base
+       ============================================================ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* Scrollbar styling */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-secondary); }
+    ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+    /* ============================================================
+       Layout
+       ============================================================ */
+    .dashboard-container {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 24px 20px;
+    }
+
+    /* ============================================================
+       Header
+       ============================================================ */
+    .dashboard-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-bottom: 32px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .header-left h1 {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #fff 60%, var(--accent-blue));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .header-left .subtitle {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+
+    .header-right {
+      text-align: right;
+    }
+
+    .header-right .current-time {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .header-right .current-date {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .btn-refresh {
+      background: var(--accent-blue-bg);
+      color: var(--accent-blue);
+      border: 1px solid rgba(41, 121, 255, 0.3);
+      padding: 8px 18px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      transition: var(--transition);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-refresh:hover {
+      background: rgba(41, 121, 255, 0.2);
+      border-color: var(--accent-blue);
+    }
+
+    .btn-refresh.loading {
+      opacity: 0.6;
+      pointer-events: none;
+    }
+
+    /* ============================================================
+       Summary Cards
+       ============================================================ */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .summary-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+      transition: var(--transition);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .summary-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+    }
+
+    .summary-card.total::before { background: var(--accent-blue); }
+    .summary-card.healthy::before { background: var(--accent-green); }
+    .summary-card.warning::before { background: var(--accent-orange); }
+    .summary-card.critical::before { background: var(--accent-red); }
+    .summary-card.scan-time::before { background: var(--text-muted); }
+
+    .summary-card:hover {
+      background: var(--bg-card-hover);
+      transform: translateY(-2px);
+    }
+
+    .summary-card .card-icon {
+      font-size: 24px;
+      margin-bottom: 8px;
+      display: inline-block;
+    }
+
+    .summary-card .card-label {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-secondary);
+      margin-bottom: 4px;
+    }
+
+    .summary-card .card-value {
+      font-size: 32px;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+
+    .summary-card.total .card-value { color: var(--accent-blue); }
+    .summary-card.healthy .card-value { color: var(--accent-green); }
+    .summary-card.warning .card-value { color: var(--accent-orange); }
+    .summary-card.critical .card-value { color: var(--accent-red); }
+    .summary-card.scan-time .card-value {
+      font-size: 14px;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    /* ============================================================
+       Charts Section
+       ============================================================ */
+    .charts-row {
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: 20px;
+      margin-bottom: 32px;
+    }
+
+    .chart-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+    }
+
+    .chart-card h3 {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 16px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .chart-card .chart-wrapper {
+      position: relative;
+      width: 100%;
+      max-height: 280px;
+    }
+
+    .chart-card .chart-wrapper canvas {
+      max-height: 280px;
+    }
+
+    /* ============================================================
+       Table Section
+       ============================================================ */
+    .table-section {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .table-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .table-toolbar .toolbar-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .table-toolbar .toolbar-right {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .search-input {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      padding: 8px 14px;
+      color: var(--text-primary);
+      font-size: 13px;
+      width: 220px;
+      transition: var(--transition);
+      outline: none;
+    }
+
+    .search-input:focus {
+      border-color: var(--accent-blue);
+      box-shadow: 0 0 0 2px rgba(41, 121, 255, 0.2);
+    }
+
+    .search-input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .filter-select {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      padding: 8px 14px;
+      color: var(--text-primary);
+      font-size: 13px;
+      outline: none;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .filter-select:focus {
+      border-color: var(--accent-blue);
+    }
+
+    /* ============================================================
+       Data Table
+       ============================================================ */
+    .table-wrapper {
+      overflow-x: auto;
+      padding: 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    thead {
+      background: var(--bg-secondary);
+    }
+
+    thead th {
+      padding: 12px 14px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      cursor: pointer;
+      user-select: none;
+      position: relative;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    thead th:hover {
+      color: var(--text-primary);
+    }
+
+    thead th .sort-indicator {
+      display: inline-block;
+      margin-left: 4px;
+      opacity: 0.4;
+    }
+
+    thead th.sort-asc .sort-indicator::after { content: ' ▲'; opacity: 1; }
+    thead th.sort-desc .sort-indicator::after { content: ' ▼'; opacity: 1; }
+
+    tbody tr {
+      border-bottom: 1px solid var(--border-color);
+      transition: var(--transition);
+    }
+
+    tbody tr:hover {
+      background: rgba(41, 121, 255, 0.05);
+    }
+
+    tbody td {
+      padding: 10px 14px;
+      white-space: nowrap;
+      vertical-align: middle;
+    }
+
+    tbody td:first-child {
+      font-weight: 600;
+      color: var(--accent-blue);
+    }
+
+    /* Status Badge */
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }
+
+    .status-badge.true {
+      background: var(--accent-green-bg);
+      color: var(--accent-green);
+    }
+
+    .status-badge.false {
+      background: var(--accent-red-bg);
+      color: var(--accent-red);
+    }
+
+    .status-badge .icon {
+      font-size: 12px;
+    }
+
+    /* Overall Health Badge */
+    .health-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 14px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }
+
+    .health-badge.healthy {
+      background: var(--accent-green-bg);
+      color: var(--accent-green);
+    }
+
+    .health-badge.warning {
+      background: var(--accent-orange-bg);
+      color: var(--accent-orange);
+    }
+
+    .health-badge.critical {
+      background: var(--accent-red-bg);
+      color: var(--accent-red);
+    }
+
+    /* Health Score Progress Bar */
+    .score-cell {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 140px;
+    }
+
+    .progress-bar {
+      flex: 1;
+      height: 6px;
+      background: var(--bg-secondary);
+      border-radius: 3px;
+      overflow: hidden;
+      min-width: 70px;
+    }
+
+    .progress-bar .progress-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.6s ease;
+    }
+
+    .progress-fill.green { background: var(--accent-green); }
+    .progress-fill.orange { background: var(--accent-orange); }
+    .progress-fill.red { background: var(--accent-red); }
+
+    .score-text {
+      font-weight: 700;
+      font-size: 13px;
+      min-width: 40px;
+      text-align: right;
+    }
+
+    .score-text.green { color: var(--accent-green); }
+    .score-text.orange { color: var(--accent-orange); }
+    .score-text.red { color: var(--accent-red); }
+
+    /* ============================================================
+       Pagination
+       ============================================================ */
+    .pagination-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: 14px 20px;
+      border-top: 1px solid var(--border-color);
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .pagination-controls {
+      display: flex;
+      gap: 4px;
+    }
+
+    .page-btn {
+      background: transparent;
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      padding: 6px 12px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      font-size: 13px;
+      transition: var(--transition);
+      min-width: 36px;
+      text-align: center;
+    }
+
+    .page-btn:hover {
+      background: var(--bg-card-hover);
+      color: var(--text-primary);
+    }
+
+    .page-btn.active {
+      background: var(--accent-blue);
+      border-color: var(--accent-blue);
+      color: #fff;
+    }
+
+    .page-btn:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    /* ============================================================
+       Empty State
+       ============================================================ */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+    }
+
+    .empty-state .empty-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+      opacity: 0.5;
+    }
+
+    .empty-state h3 {
+      font-size: 20px;
+      margin-bottom: 8px;
+      color: var(--text-secondary);
+    }
+
+    .empty-state p {
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+
+    /* ============================================================
+       Loading & Error States
+       ============================================================ */
+    .loading-overlay {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 80px 20px;
+      gap: 16px;
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid var(--border-color);
+      border-top-color: var(--accent-blue);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .error-state {
+      text-align: center;
+      padding: 60px 20px;
+    }
+
+    .error-state .error-icon {
+      font-size: 40px;
+      margin-bottom: 12px;
+    }
+
+    .error-state h3 {
+      color: var(--accent-red);
+      margin-bottom: 8px;
+    }
+
+    .error-state p {
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+
+    /* ============================================================
+       Responsive Design
+       ============================================================ */
+    @media (max-width: 1024px) {
+      .charts-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .dashboard-container {
+        padding: 16px 12px;
+      }
+
+      .dashboard-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+      }
+
+      .header-right {
+        text-align: left;
+      }
+
+      .summary-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+      }
+
+      .summary-card {
+        padding: 14px;
+      }
+
+      .summary-card .card-value {
+        font-size: 24px;
+      }
+
+      .table-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .search-input {
+        width: 100%;
+      }
+
+      .table-toolbar .toolbar-left {
+        width: 100%;
+      }
+
+      .filter-select {
+        flex: 1;
+      }
+
+      .pagination-bar {
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .charts-row {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+
+      table {
+        font-size: 12px;
+      }
+
+      thead th,
+      tbody td {
+        padding: 8px 10px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .summary-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      .summary-card .card-value {
+        font-size: 20px;
+      }
+
+      .header-left h1 {
+        font-size: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ============================================================
+       Dashboard Container
+       ============================================================ -->
+  <div class="dashboard-container">
+
+    <!-- ============================================================
+         Header
+         ============================================================ -->
+    <header class="dashboard-header">
+      <div class="header-left">
+        <h1>⚙️ AD Health Check Automation</h1>
+        <p class="subtitle">Domain Controller Health Monitoring Dashboard</p>
+      </div>
+      <div class="header-right">
+        <div class="current-time" id="currentTime">--:--:--</div>
+        <div class="current-date" id="currentDate">---</div>
+        <div class="header-actions" style="margin-top:10px;">
+          <button class="btn-refresh" id="refreshBtn" onclick="loadData()">
+            ⟳ Refresh Data
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- ============================================================
+         Summary Cards
+         ============================================================ -->
+    <section class="summary-grid" id="summaryCards">
+      <div class="summary-card total">
+        <div class="card-icon">🖥️</div>
+        <div class="card-label">Total DCs</div>
+        <div class="card-value" id="totalDCs">--</div>
+      </div>
+      <div class="summary-card healthy">
+        <div class="card-icon">✅</div>
+        <div class="card-label">Healthy</div>
+        <div class="card-value" id="healthyCount">--</div>
+      </div>
+      <div class="summary-card warning">
+        <div class="card-icon">⚠️</div>
+        <div class="card-label">Warning</div>
+        <div class="card-value" id="warningCount">--</div>
+      </div>
+      <div class="summary-card critical">
+        <div class="card-icon">🔴</div>
+        <div class="card-label">Critical</div>
+        <div class="card-value" id="criticalCount">--</div>
+      </div>
+      <div class="summary-card scan-time">
+        <div class="card-icon">🕐</div>
+        <div class="card-label">Last Scan</div>
+        <div class="card-value" id="lastScanTime">--</div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         Charts Section
+         ============================================================ -->
+    <section class="charts-row">
+      <div class="chart-card">
+        <h3>📊 Health Distribution</h3>
+        <div class="chart-wrapper">
+          <canvas id="pieChart"></canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <h3>📈 Health Score per DC</h3>
+        <div class="chart-wrapper">
+          <canvas id="barChart"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         Table Section
+         ============================================================ -->
+    <section class="table-section" id="tableSection">
+
+      <!-- Toolbar -->
+      <div class="table-toolbar">
+        <div class="toolbar-left">
+          <input type="text" class="search-input" id="searchInput" placeholder="🔍 Search by DC name..." oninput="filterAndRenderTable()">
+          <select class="filter-select" id="healthFilter" onchange="filterAndRenderTable()">
+            <option value="all">All Health States</option>
+            <option value="Healthy">Healthy</option>
+            <option value="Warning">Warning</option>
+            <option value="Critical">Critical</option>
+          </select>
+        </div>
+        <div class="toolbar-right">
+          <span id="recordCount">0 records</span>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th onclick="sortTable('DCName')">DCName <span class="sort-indicator"></span></th>
+              <th onclick="sortTable('DomainName')">Domain <span class="sort-indicator"></span></th>
+              <th onclick="sortTable('PowerStatus')">Power <span class="sort-indicator"></span></th>
+              <th onclick="sortTable('DNS')">DNS <span class="sort-indicator"></span></th>
+              <th onclick="sortTable('NetBIOS')">NetBIOS <span class="sort-indicator"></span></th>
+              <th onclick="sortTable('LDAP')">LDAP <span class="sort-indicator"></span></th>
+              <th onclick="sortTable('Kerberos')">Kerberos <span class="sort-indicator"></span></th>
+              <th onclick="sortTable('Replication')">Replication <span class="sort-indicator"></span></th>
+              <th onclick="sortTable('SYSVOL')">SYSVOL <span class="sort-indicator"></span></th>
+              <th onclick="sortTable('NetLogon')">NetLogon <span class="sort-indicator"></span></th>
+              <th onclick="sortTable('GlobalCatalog')">GC <span class="sort-indicator"></span></th>
+              <th onclick="sortTable('FSMORoleHolder')">FSMO <span class="sort-indicator"></span></th>
+              <th onclick="sortTable('ADWS')">ADWS <span class="sort-indicator"></span></th>
+              <th onclick="sortTable('DiskSpaceOK')">Disk <span class="sort-indicator"></span></th>
+              <th onclick="sortTable('CPUHealthy')">CPU <span class="sort-indicator"></span></th>
+              <th onclick="sortTable('MemoryHealthy')">Memory <span class="sort-indicator"></span></th>
+              <th onclick="sortTable('EventLogHealthy')">EventLog <span class="sort-indicator"></span></th>
+              <th onclick="sortTable('OverallHealth')">Health <span class="sort-indicator"></span></th>
+              <th onclick="sortTable('HealthScore')">Score <span class="sort-indicator"></span></th>
+              <th onclick="sortTable('LastChecked')">Last Checked <span class="sort-indicator"></span></th>
+            </tr>
+          </thead>
+          <tbody id="tableBody">
+            <!-- Dynamic rows rendered here -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <div class="pagination-bar">
+        <div>
+          Showing <span id="pageStart">0</span>–<span id="pageEnd">0</span> of <span id="totalRecords">0</span>
+        </div>
+        <div class="pagination-controls" id="paginationControls">
+          <!-- Page buttons rendered here -->
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <script>
+    // ============================================================
+    // State
+    // ============================================================
+    // Always connect to Render API — no localhost fallback
+    const API_BASE = 'https://portfolio-api-3sx8.onrender.com';
+
+    let allRecords = [];
+    let filteredRecords = [];
+    let sortKey = null;
+    let sortDir = 'asc';
+    let currentPage = 1;
+    const PAGE_SIZE = 10;
+
+    let pieChartInstance = null;
+    let barChartInstance = null;
+
+    // Health check fields (boolean)
+    const BOOL_FIELDS = [
+      'PowerStatus', 'DNS', 'NetBIOS', 'LDAP', 'Kerberos', 'Replication',
+      'SYSVOL', 'NetLogon', 'GlobalCatalog', 'FSMORoleHolder', 'ADWS',
+      'DiskSpaceOK', 'CPUHealthy', 'MemoryHealthy', 'EventLogHealthy'
+    ];
+
+    // ============================================================
+    // Clock
+    // ============================================================
+    function updateClock() {
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      document.getElementById('currentTime').textContent = timeStr;
+      document.getElementById('currentDate').textContent = dateStr;
+    }
+    updateClock();
+    setInterval(updateClock, 1000);
+
+    // ============================================================
+    // Data Access Layer
+    // ============================================================
+    async function fetchHealthCheckData() {
+      const res = await fetch(`${API_BASE}/api/ad/health-check`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || 'Unknown error');
+      return data.records || [];
+    }
+
+    // ============================================================
+    // Business Logic: Compute health score
+    // ============================================================
+    function computeHealthScore(record) {
+      let trueCount = 0;
+      for (const field of BOOL_FIELDS) {
+        if (record[field] === true || record[field] === 1 || record[field] === 'TRUE' || record[field] === 'true' || record[field] === 1) {
+          trueCount++;
+        }
+      }
+      return Math.round((trueCount / BOOL_FIELDS.length) * 100);
+    }
+
+    function getHealthStatus(record) {
+      const oh = record.OverallHealth;
+      if (oh === 'Healthy' || oh === 'healthy') return 'Healthy';
+      if (oh === 'Warning' || oh === 'warning') return 'Warning';
+      if (oh === 'Critical' || oh === 'critical') return 'Critical';
+      // Fallback based on score
+      const score = computeHealthScore(record);
+      if (score >= 90) return 'Healthy';
+      if (score >= 70) return 'Warning';
+      return 'Critical';
+    }
+
+    function normalizeBool(val) {
+      return val === true || val === 1 || val === 'TRUE' || val === 'true' || val === 1;
+    }
+
+    // ============================================================
+    // Render: Summary Cards
+    // ============================================================
+    function renderSummary(records) {
+      const total = records.length;
+      let healthy = 0, warning = 0, critical = 0;
+      let latestScan = null;
+
+      for (const r of records) {
+        const status = getHealthStatus(r);
+        if (status === 'Healthy') healthy++;
+        else if (status === 'Warning') warning++;
+        else critical++;
+
+        if (r.LastChecked) {
+          const d = new Date(r.LastChecked);
+          if (!latestScan || d > latestScan) latestScan = d;
+        }
+      }
+
+      document.getElementById('totalDCs').textContent = total;
+      document.getElementById('healthyCount').textContent = healthy;
+      document.getElementById('warningCount').textContent = warning;
+      document.getElementById('criticalCount').textContent = critical;
+      document.getElementById('lastScanTime').textContent = latestScan
+        ? latestScan.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+        : 'N/A';
+    }
+
+    // ============================================================
+    // Render: Charts
+    // ============================================================
+    function renderCharts(records) {
+      let healthy = 0, warning = 0, critical = 0;
+      for (const r of records) {
+        const s = getHealthStatus(r);
+        if (s === 'Healthy') healthy++;
+        else if (s === 'Warning') warning++;
+        else critical++;
+      }
+
+      // Pie Chart
+      const pieCtx = document.getElementById('pieChart').getContext('2d');
+      if (pieChartInstance) pieChartInstance.destroy();
+      pieChartInstance = new Chart(pieCtx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Healthy', 'Warning', 'Critical'],
+          datasets: [{
+            data: [healthy, warning, critical],
+            backgroundColor: [
+              getComputedStyle(document.documentElement).getPropertyValue('--accent-green').trim() || '#00c853',
+              getComputedStyle(document.documentElement).getPropertyValue('--accent-orange').trim() || '#ff9100',
+              getComputedStyle(document.documentElement).getPropertyValue('--accent-red').trim() || '#ff1744'
+            ],
+            borderWidth: 0,
+            hoverOffset: 8
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: {
+                color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim() || '#8b95b5',
+                padding: 16,
+                font: { size: 12 }
+              }
+            }
+          },
+          cutout: '65%'
+        }
+      });
+
+      // Bar Chart
+      const barCtx = document.getElementById('barChart').getContext('2d');
+      if (barChartInstance) barChartInstance.destroy();
+
+      const labels = records.map(r => r.DCName || 'Unknown');
+      const scores = records.map(r => computeHealthScore(r));
+      const colors = scores.map(s => {
+        if (s >= 90) return getComputedStyle(document.documentElement).getPropertyValue('--accent-green').trim() || '#00c853';
+        if (s >= 70) return getComputedStyle(document.documentElement).getPropertyValue('--accent-orange').trim() || '#ff9100';
+        return getComputedStyle(document.documentElement).getPropertyValue('--accent-red').trim() || '#ff1744';
+      });
+
+      barChartInstance = new Chart(barCtx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Health Score (%)',
+            data: scores,
+            backgroundColor: colors,
+            borderRadius: 4,
+            borderSkipped: false,
+            barPercentage: 0.6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          indexAxis: 'y',
+          scales: {
+            x: {
+              min: 0,
+              max: 100,
+              grid: {
+                color: 'rgba(42, 50, 80, 0.5)'
+              },
+              ticks: {
+                color: getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim() || '#5a6488',
+                font: { size: 11 }
+              }
+            },
+            y: {
+              grid: { display: false },
+              ticks: {
+                color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim() || '#8b95b5',
+                font: { size: 11 }
+              }
+            }
+          },
+          plugins: {
+            legend: { display: false }
+          }
+        }
+      });
+    }
+
+    // ============================================================
+    // Render: Table Rows
+    // ============================================================
+    function renderTable(records) {
+      const tbody = document.getElementById('tableBody');
+      if (!records.length) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="20" style="text-align:center;padding:40px;color:var(--text-muted);">
+              <div style="font-size:32px;margin-bottom:8px;">📋</div>
+              No records match the current filter.
+            </td>
+          </tr>`;
+        document.getElementById('pageStart').textContent = '0';
+        document.getElementById('pageEnd').textContent = '0';
+        document.getElementById('totalRecords').textContent = '0';
+        document.getElementById('recordCount').textContent = '0 records';
+        document.getElementById('paginationControls').innerHTML = '';
+        return;
+      }
+
+      const start = (currentPage - 1) * PAGE_SIZE;
+      const end = Math.min(start + PAGE_SIZE, records.length);
+      const pageRecords = records.slice(start, end);
+
+      let html = '';
+      for (const r of pageRecords) {
+        const health = getHealthStatus(r);
+        const score = computeHealthScore(r);
+        const scoreClass = score >= 90 ? 'green' : score >= 70 ? 'orange' : 'red';
+        const healthClass = health.toLowerCase();
+
+        html += '<tr>';
+        html += `<td>${escHtml(r.DCName || '—')}</td>`;
+        html += `<td>${escHtml(r.DomainName || '—')}</td>`;
+
+        // Boolean fields
+        for (const field of BOOL_FIELDS) {
+          const val = normalizeBool(r[field]);
+          html += `<td>${val
+            ? '<span class="status-badge true"><span class="icon">✓</span> TRUE</span>'
+            : '<span class="status-badge false"><span class="icon">✗</span> FALSE</span>'
+          }</td>`;
+        }
+
+        html += `<td><span class="health-badge ${healthClass}">● ${health}</span></td>`;
+
+        // Score
+        html += `<td>
+          <div class="score-cell">
+            <div class="progress-bar">
+              <div class="progress-fill ${scoreClass}" style="width:${score}%"></div>
+            </div>
+            <span class="score-text ${scoreClass}">${score}%</span>
+          </div>
+        </td>`;
+
+        // LastChecked
+        const lc = r.LastChecked ? new Date(r.LastChecked).toLocaleString() : '—';
+        html += `<td>${lc}</td>`;
+
+        html += '</tr>';
+      }
+
+      tbody.innerHTML = html;
+
+      document.getElementById('pageStart').textContent = start + 1;
+      document.getElementById('pageEnd').textContent = end;
+      document.getElementById('totalRecords').textContent = records.length;
+      document.getElementById('recordCount').textContent = `${records.length} records`;
+
+      renderPagination(records.length);
+    }
+
+    // ============================================================
+    // Pagination
+    // ============================================================
+    function renderPagination(total) {
+      const totalPages = Math.ceil(total / PAGE_SIZE);
+      const container = document.getElementById('paginationControls');
+      if (totalPages <= 1) {
+        container.innerHTML = '';
+        return;
+      }
+
+      let html = '';
+      html += `<button class="page-btn" onclick="goToPage(${currentPage - 1})" ${currentPage <= 1 ? 'disabled' : ''}>‹</button>`;
+
+      const startPage = Math.max(1, currentPage - 2);
+      const endPage = Math.min(totalPages, currentPage + 2);
+
+      if (startPage > 1) {
+        html += `<button class="page-btn" onclick="goToPage(1)">1</button>`;
+        if (startPage > 2) html += `<span class="page-btn" style="border:none;cursor:default;">…</span>`;
+      }
+
+      for (let i = startPage; i <= endPage; i++) {
+        html += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
+      }
+
+      if (endPage < totalPages) {
+        if (endPage < totalPages - 1) html += `<span class="page-btn" style="border:none;cursor:default;">…</span>`;
+        html += `<button class="page-btn" onclick="goToPage(${totalPages})">${totalPages}</button>`;
+      }
+
+      html += `<button class="page-btn" onclick="goToPage(${currentPage + 1})" ${currentPage >= totalPages ? 'disabled' : ''}>›</button>`;
+
+      container.innerHTML = html;
+    }
+
+    function goToPage(page) {
+      const total = filteredRecords.length;
+      const totalPages = Math.ceil(total / PAGE_SIZE);
+      if (page < 1 || page > totalPages) return;
+      currentPage = page;
+      renderTable(filteredRecords);
+    }
+
+    // ============================================================
+    // Search & Filter
+    // ============================================================
+    function filterAndRenderTable() {
+      const search = document.getElementById('searchInput').value.toLowerCase().trim();
+      const filter = document.getElementById('healthFilter').value;
+
+      let records = allRecords;
+
+      // Search filter
+      if (search) {
+        records = records.filter(r => {
+          const name = (r.DCName || '').toLowerCase();
+          return name.includes(search);
+        });
+      }
+
+      // Health filter
+      if (filter !== 'all') {
+        records = records.filter(r => getHealthStatus(r) === filter);
+      }
+
+      filteredRecords = records;
+      currentPage = 1;
+      renderTable(filteredRecords);
+    }
+
+    // ============================================================
+    // Sorting
+    // ============================================================
+    function sortTable(key) {
+      if (sortKey === key) {
+        sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+      } else {
+        sortKey = key;
+        sortDir = 'asc';
+      }
+
+      // Update header indicators
+      document.querySelectorAll('thead th').forEach(th => {
+        th.classList.remove('sort-asc', 'sort-desc');
+      });
+      const activeTh = Array.from(document.querySelectorAll('thead th')).find(th => th.textContent.trim().startsWith(key === 'DCName' ? 'DCName' : key));
+      if (activeTh) activeTh.classList.add(sortDir === 'asc' ? 'sort-asc' : 'sort-desc');
+
+      allRecords.sort((a, b) => {
+        let valA, valB;
+        if (key === 'HealthScore') {
+          valA = computeHealthScore(a);
+          valB = computeHealthScore(b);
+        } else if (key === 'LastChecked') {
+          valA = a.LastChecked ? new Date(a.LastChecked).getTime() : 0;
+          valB = b.LastChecked ? new Date(b.LastChecked).getTime() : 0;
+        } else {
+          valA = (a[key] || '').toString().toLowerCase();
+          valB = (b[key] || '').toString().toLowerCase();
+        }
+
+        if (valA < valB) return sortDir === 'asc' ? -1 : 1;
+        if (valA > valB) return sortDir === 'asc' ? 1 : -1;
+        return 0;
+      });
+
+      filterAndRenderTable();
+    }
+
+    // ============================================================
+    // Utility
+    // ============================================================
+    function escHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    // ============================================================
+    // Main Load
+    // ============================================================
+    async function loadData() {
+      const btn = document.getElementById('refreshBtn');
+      btn.classList.add('loading');
+      btn.textContent = '⟳ Loading...';
+
+      const tableSection = document.getElementById('tableSection');
+
+      // Show loading state
+      tableSection.querySelector('.table-wrapper').innerHTML = `
+        <div class="loading-overlay">
+          <div class="spinner"></div>
+          <p style="color:var(--text-secondary);">Loading health check data...</p>
+        </div>`;
+
+      try {
+        const records = await fetchHealthCheckData();
+        allRecords = records;
+
+        if (!records || records.length === 0) {
+          // Empty state
+          document.getElementById('summaryCards').innerHTML = `
+            <div style="grid-column:1/-1;text-align:center;padding:60px 20px;background:var(--bg-card);border-radius:var(--radius);border:1px solid var(--border-color);">
+              <div style="font-size:48px;margin-bottom:16px;opacity:0.5;">📋</div>
+              <h3 style="color:var(--text-secondary);margin-bottom:8px;">No Health Check Data Available</h3>
+              <p style="color:var(--text-muted);font-size:14px;">
+                The ADHealthCheck table exists but contains no records.<br>
+                Health check data will appear here once scans are performed.
+              </p>
+            </div>`;
+
+          // Clear charts
+          document.querySelector('.charts-row').style.display = 'none';
+          // Clear table
+          tableSection.querySelector('.table-wrapper').innerHTML = `
+            <div class="empty-state">
+              <div class="empty-icon">📋</div>
+              <h3>No health check data available</h3>
+              <p>No records were found in the ADHealthCheck table. Data will appear once AD health checks are executed.</p>
+            </div>`;
+          document.querySelector('.pagination-bar').style.display = 'none';
+          document.querySelector('.table-toolbar').style.display = 'none';
+          document.getElementById('recordCount').textContent = '0 records';
+          btn.classList.remove('loading');
+          btn.textContent = '⟳ Refresh Data';
+          return;
+        }
+
+        // Data exists — render everything
+        document.querySelector('.charts-row').style.display = 'grid';
+        document.querySelector('.pagination-bar').style.display = 'flex';
+        document.querySelector('.table-toolbar').style.display = 'flex';
+
+        // Rebuild summary cards HTML
+        document.getElementById('summaryCards').innerHTML = `
+          <div class="summary-card total">
+            <div class="card-icon">🖥️</div>
+            <div class="card-label">Total DCs</div>
+            <div class="card-value" id="totalDCs">--</div>
+          </div>
+          <div class="summary-card healthy">
+            <div class="card-icon">✅</div>
+            <div class="card-label">Healthy</div>
+            <div class="card-value" id="healthyCount">--</div>
+          </div>
+          <div class="summary-card warning">
+            <div class="card-icon">⚠️</div>
+            <div class="card-label">Warning</div>
+            <div class="card-value" id="warningCount">--</div>
+          </div>
+          <div class="summary-card critical">
+            <div class="card-icon">🔴</div>
+            <div class="card-label">Critical</div>
+            <div class="card-value" id="criticalCount">--</div>
+          </div>
+          <div class="summary-card scan-time">
+            <div class="card-icon">🕐</div>
+            <div class="card-label">Last Scan</div>
+            <div class="card-value" id="lastScanTime">--</div>
+          </div>`;
+
+        renderSummary(records);
+        renderCharts(records);
+
+        // Reset filters
+        document.getElementById('searchInput').value = '';
+        document.getElementById('healthFilter').value = 'all';
+        filteredRecords = [...records];
+        sortKey = null;
+        sortDir = 'asc';
+        document.querySelectorAll('thead th').forEach(th => th.classList.remove('sort-asc', 'sort-desc'));
+        currentPage = 1;
+        renderTable(filteredRecords);
+
+      } catch (err) {
+        console.error('Failed to load health check data:', err);
+        tableSection.querySelector('.table-wrapper').innerHTML = `
+          <div class="error-state">
+            <div class="error-icon">⚠️</div>
+            <h3>Failed to Load Data</h3>
+            <p>${escHtml(err.message || 'Could not connect to the server.')}</p>
+            <p style="margin-top:12px;">
+              <button class="btn-refresh" onclick="loadData()" style="background:var(--accent-red-bg);color:var(--accent-red);border-color:rgba(255,23,68,0.3);">
+                ⟳ Retry
+              </button>
+            </p>
+          </div>`;
+      } finally {
+        btn.classList.remove('loading');
+        btn.textContent = '⟳ Refresh Data';
+      }
+    }
+
+    // ============================================================
+    // Initialize
+    // ============================================================
+    document.addEventListener('DOMContentLoaded', loadData);
+  </script>
+
+</body>
+</html>

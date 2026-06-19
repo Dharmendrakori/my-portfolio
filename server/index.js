@@ -27,7 +27,8 @@ const {
   AIVEN_DB_PASSWORD,
   AIVEN_DB_NAME,
   API_PORT,
-  AIVEN_AD_USERS_TABLE
+  AIVEN_AD_USERS_TABLE,
+  AIVEN_AD_HEALTH_TABLE
 } = process.env;
 
 if (!AIVEN_DB_HOST || !AIVEN_DB_USER || !AIVEN_DB_PASSWORD || !AIVEN_DB_NAME) {
@@ -375,6 +376,32 @@ app.get('/api/ad/tree', async (_req, res) => {
     });
   } catch (err) {
     console.error(err);
+    res.status(500).json({ ok: false, error: err?.message || 'Server error' });
+  }
+});
+
+/**
+ * GET /api/ad/health-check
+ * Returns all AD health check records ordered by LastChecked DESC.
+ * Uses the existing DB pool and configurable table name.
+ */
+app.get('/api/ad/health-check', async (req, res) => {
+  if (!hasDb) return res.status(503).json({ ok: false, error: 'DB env vars missing' });
+  try {
+    const table = AIVEN_AD_HEALTH_TABLE || 'ADHealthCheck';
+
+    // Verify the table exists
+    const [tables] = await pool.query("SHOW TABLES LIKE ?", [table]);
+    if (!tables || tables.length === 0) {
+      return res.json({ ok: true, count: 0, records: [], message: 'No health check data available' });
+    }
+
+    // Fetch all records ordered by LastChecked DESC
+    const [rows] = await pool.query(`SELECT * FROM \`${table}\` ORDER BY LastChecked DESC`);
+
+    res.json({ ok: true, count: rows.length, records: rows });
+  } catch (err) {
+    console.error('[AD Health Check] Error:', err);
     res.status(500).json({ ok: false, error: err?.message || 'Server error' });
   }
 });
