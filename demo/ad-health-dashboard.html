@@ -682,6 +682,7 @@
         <div class="current-date" id="currentDate">---</div>
         <div class="header-actions" style="margin-top:10px;">
           <button class="btn-refresh" id="refreshBtn" onclick="loadData()">⟳ Refresh Data</button>
+          <button class="btn-refresh" id="scanBtn" onclick="runScan()" style="background:var(--accent-green-bg);color:var(--accent-green);border-color:rgba(0,200,83,0.3);">▶ Run Scan</button>
         </div>
       </div>
     </header>
@@ -844,6 +845,15 @@
       return data.records || [];
     }
 
+    async function triggerScan() {
+      const res = await fetch(`${API_BASE}/api/ad/health-check/scan`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+      return await res.json();
+    }
+
     // ============================================================
     // Business Logic
     // ============================================================
@@ -897,22 +907,31 @@
     function renderSummary(records) {
       const total = records.length;
       let healthy = 0, warning = 0, critical = 0;
+      let latestScan = null;
 
       for (const r of records) {
         const status = getHealthStatus(r);
         if (status === 'Healthy') healthy++;
         else if (status === 'Warning') warning++;
         else critical++;
+
+        // Track the most recent LastChecked timestamp
+        if (r.LastChecked) {
+          const checkTime = new Date(r.LastChecked).getTime();
+          if (!latestScan || checkTime > latestScan) {
+            latestScan = checkTime;
+          }
+        }
       }
 
-      // Show the current time as the scan time — reflects when data was last refreshed
-      const now = new Date();
+      // Use the most recent LastChecked from database, fallback to current time
+      const scanTime = latestScan ? new Date(latestScan) : new Date();
 
       document.getElementById('totalDCs').textContent = total;
       document.getElementById('healthyCount').textContent = healthy;
       document.getElementById('warningCount').textContent = warning;
       document.getElementById('criticalCount').textContent = critical;
-      document.getElementById('lastScanTime').textContent = now.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+      document.getElementById('lastScanTime').textContent = scanTime.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
     }
 
     // ============================================================
@@ -1310,6 +1329,32 @@
       const div = document.createElement('div');
       div.textContent = str;
       return div.innerHTML;
+    }
+
+    // ============================================================
+    // Scan Functions
+    // ============================================================
+    async function runScan() {
+      const scanBtn = document.getElementById('scanBtn');
+      scanBtn.classList.add('loading');
+      scanBtn.textContent = '⟳ Scanning...';
+
+      try {
+        const result = await triggerScan();
+        console.log('Scan completed:', result);
+        
+        // Reload data to reflect the new LastChecked times
+        await loadData();
+        
+        // Show success feedback
+        alert(`Scan completed successfully!\nUpdated ${result.recordsUpdated} records at ${result.scanTime}`);
+      } catch (err) {
+        console.error('Scan failed:', err);
+        alert(`Scan failed: ${err.message}`);
+      } finally {
+        scanBtn.classList.remove('loading');
+        scanBtn.textContent = '▶ Run Scan';
+      }
     }
 
     // ============================================================

@@ -411,6 +411,110 @@ app.get('/api/health', (_req, res) => {
   return res.json({ ok: true });
 });
 
+/**
+ * POST /api/ad/health-check/scan
+ * Triggers a scan update - sets LastChecked to current time for all records
+ * This simulates performing a health check scan
+ */
+app.post('/api/ad/health-check/scan', async (req, res) => {
+  if (!hasDb) return res.status(503).json({ ok: false, error: 'DB env vars missing' });
+  try {
+    const table = AIVEN_AD_HEALTH_TABLE || 'ADHealthCheck';
+
+    // Verify the table exists
+    const [tables] = await pool.query("SHOW TABLES LIKE ?", [table]);
+    if (!tables || tables.length === 0) {
+      return res.status(404).json({ ok: false, error: 'Health check table not found' });
+    }
+
+    // Check if LastChecked column exists
+    const [colsRows] = await pool.query(`SHOW COLUMNS FROM \`${table}\``);
+    const existingCols = new Set((colsRows || []).map((r) => r.Field));
+    
+    if (!existingCols.has('LastChecked')) {
+      return res.status(500).json({ ok: false, error: 'LastChecked column not found in table' });
+    }
+
+    // Update LastChecked to current time for all records
+    const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
+    const [result] = await pool.query(
+      `UPDATE \`${table}\` SET \`LastChecked\` = ?`,
+      [now]
+    );
+
+    console.log(`[AD Health Check] Scan performed at ${now}. Updated ${result.affectedRows} records.`);
+
+    res.json({ 
+      ok: true, 
+      message: 'Scan completed successfully',
+      scanTime: now,
+      recordsUpdated: result.affectedRows
+    });
+  } catch (err) {
+    console.error('[AD Health Check] Scan error:', err);
+    res.status(500).json({ ok: false, error: err?.message || 'Server error' });
+  }
+});
+
+/**
+ * POST /api/ad/health-check/scan/:dcName
+ * Triggers a scan update for a specific DC
+ */
+app.post('/api/ad/health-check/scan/:dcName', async (req, res) => {
+  if (!hasDb) return res.status(503).json({ ok: false, error: 'DB env vars missing' });
+  try {
+    const table = AIVEN_AD_HEALTH_TABLE || 'ADHealthCheck';
+    const { dcName } = req.params;
+
+    // Verify the table exists
+    const [tables] = await pool.query("SHOW TABLES LIKE ?", [table]);
+    if (!tables || tables.length === 0) {
+      return res.status(404).json({ ok: false, error: 'Health check table not found' });
+    }
+
+    // Check if LastChecked column exists
+    const [colsRows] = await pool.query(`SHOW COLUMNS FROM \`${table}\``);
+    const existingCols = new Set((colsRows || []).map((r) => r.Field));
+    
+    if (!existingCols.has('LastChecked')) {
+      return res.status(500).json({ ok: false, error: 'LastChecked column not found in table' });
+    }
+
+    // Find the DCName column
+    let dcCol = null;
+    if (existingCols.has('DCName')) dcCol = 'DCName';
+    else if (existingCols.has('dc_name')) dcCol = 'dc_name';
+    else if (existingCols.has('name')) dcCol = 'name';
+    
+    if (!dcCol) {
+      return res.status(500).json({ ok: false, error: 'DC name column not found in table' });
+    }
+
+    // Update LastChecked to current time for the specific DC
+    const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
+    const [result] = await pool.query(
+      `UPDATE \`${table}\` SET \`LastChecked\` = ? WHERE \`${dcCol}\` = ?`,
+      [now, dcName]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ ok: false, error: `DC '${dcName}' not found` });
+    }
+
+    console.log(`[AD Health Check] Scan performed for ${dcName} at ${now}`);
+
+    res.json({ 
+      ok: true, 
+      message: `Scan completed for ${dcName}`,
+      scanTime: now,
+      dcName: dcName
+    });
+  } catch (err) {
+    console.error('[AD Health Check] Scan error:', err);
+    res.status(500).json({ ok: false, error: err?.message || 'Server error' });
+  }
+});
+
 const port = Number(API_PORT || 3001);
 app.listen(port, () => {
   console.log(`Admin API listening on http://localhost:${port}`);
