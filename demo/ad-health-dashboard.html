@@ -8,16 +8,22 @@
   <!-- Chart.js for dashboard charts -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
 
+  <!-- Matrix Rain Canvas (matches homepage style) -->
+  <canvas id="matrix-canvas"></canvas>
+
   <style>
     /* ============================================================
-       CSS Variable Definitions — Enterprise Theme
+       CSS Variable Definitions — Enterprise Theme + Matrix
        ============================================================ */
     :root {
+      --matrix-green: #00ff41;
+      --matrix-dark: #003b00;
+      --matrix-dim: #008f11;
       --bg-primary: #0b0e17;
       --bg-secondary: #131724;
-      --bg-card: #1a2035;
+      --bg-card: rgba(10, 20, 10, 0.85);
       --bg-card-hover: #1f2740;
-      --border-color: #2a3250;
+      --border-color: rgba(0, 255, 65, 0.15);
       --text-primary: #e8edf5;
       --text-secondary: #8b95b5;
       --text-muted: #5a6488;
@@ -36,9 +42,6 @@
       --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
     }
 
-    /* ============================================================
-       Reset & Base
-       ============================================================ */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
@@ -49,7 +52,23 @@
       min-height: 100vh;
     }
 
-    /* Scrollbar styling */
+    /* Matrix Rain Canvas */
+    #matrix-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      opacity: 0.35;
+      pointer-events: none;
+    }
+
+    .dashboard-container {
+      position: relative;
+      z-index: 1;
+    }
+
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: var(--bg-secondary); }
     ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
@@ -62,6 +81,8 @@
       max-width: 1440px;
       margin: 0 auto;
       padding: 24px 20px;
+      position: relative;
+      z-index: 1;
     }
 
     /* ============================================================
@@ -94,9 +115,7 @@
       margin-top: 4px;
     }
 
-    .header-right {
-      text-align: right;
-    }
+    .header-right { text-align: right; }
 
     .header-right .current-time {
       font-size: 20px;
@@ -299,9 +318,7 @@
       box-shadow: 0 0 0 2px rgba(41, 121, 255, 0.2);
     }
 
-    .search-input::placeholder {
-      color: var(--text-muted);
-    }
+    .search-input::placeholder { color: var(--text-muted); }
 
     .filter-select {
       background: var(--bg-secondary);
@@ -315,9 +332,7 @@
       transition: var(--transition);
     }
 
-    .filter-select:focus {
-      border-color: var(--accent-blue);
-    }
+    .filter-select:focus { border-color: var(--accent-blue); }
 
     /* ============================================================
        Data Table
@@ -333,9 +348,7 @@
       font-size: 13px;
     }
 
-    thead {
-      background: var(--bg-secondary);
-    }
+    thead { background: var(--bg-secondary); }
 
     thead th {
       padding: 12px 14px;
@@ -348,13 +361,10 @@
       white-space: nowrap;
       cursor: pointer;
       user-select: none;
-      position: relative;
       border-bottom: 1px solid var(--border-color);
     }
 
-    thead th:hover {
-      color: var(--text-primary);
-    }
+    thead th:hover { color: var(--text-primary); }
 
     thead th .sort-indicator {
       display: inline-block;
@@ -370,9 +380,7 @@
       transition: var(--transition);
     }
 
-    tbody tr:hover {
-      background: rgba(41, 121, 255, 0.05);
-    }
+    tbody tr:hover { background: rgba(41, 121, 255, 0.05); }
 
     tbody td {
       padding: 10px 14px;
@@ -407,8 +415,44 @@
       color: var(--accent-red);
     }
 
-    .status-badge .icon {
+    .status-badge .icon { font-size: 12px; }
+
+    /* Disk / CPU / Memory display */
+    .metric-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .metric-bar .bar {
+      flex: 1;
+      height: 6px;
+      background: var(--bg-secondary);
+      border-radius: 3px;
+      overflow: hidden;
+      min-width: 50px;
+    }
+
+    .metric-bar .bar .fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.6s ease;
+    }
+
+    .metric-bar .bar .fill.green { background: var(--accent-green); }
+    .metric-bar .bar .fill.orange { background: var(--accent-orange); }
+    .metric-bar .bar .fill.red { background: var(--accent-red); }
+
+    .metric-bar .label {
+      font-weight: 600;
       font-size: 12px;
+      min-width: 36px;
+      text-align: right;
+    }
+
+    .metric-text {
+      font-size: 12px;
+      color: var(--text-secondary);
     }
 
     /* Overall Health Badge */
@@ -491,10 +535,7 @@
       color: var(--text-secondary);
     }
 
-    .pagination-controls {
-      display: flex;
-      gap: 4px;
-    }
+    .pagination-controls { display: flex; gap: 4px; }
 
     .page-btn {
       background: transparent;
@@ -527,32 +568,7 @@
     }
 
     /* ============================================================
-       Empty State
-       ============================================================ */
-    .empty-state {
-      text-align: center;
-      padding: 60px 20px;
-    }
-
-    .empty-state .empty-icon {
-      font-size: 48px;
-      margin-bottom: 16px;
-      opacity: 0.5;
-    }
-
-    .empty-state h3 {
-      font-size: 20px;
-      margin-bottom: 8px;
-      color: var(--text-secondary);
-    }
-
-    .empty-state p {
-      color: var(--text-muted);
-      font-size: 14px;
-    }
-
-    /* ============================================================
-       Loading & Error States
+       Empty / Loading / Error States
        ============================================================ */
     .loading-overlay {
       display: flex;
@@ -596,101 +612,61 @@
       font-size: 14px;
     }
 
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+    }
+
+    .empty-state .empty-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+      opacity: 0.5;
+    }
+
+    .empty-state h3 {
+      font-size: 20px;
+      margin-bottom: 8px;
+      color: var(--text-secondary);
+    }
+
+    .empty-state p {
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+
     /* ============================================================
        Responsive Design
        ============================================================ */
     @media (max-width: 1024px) {
-      .charts-row {
-        grid-template-columns: 1fr;
-      }
+      .charts-row { grid-template-columns: 1fr; }
     }
 
     @media (max-width: 768px) {
-      .dashboard-container {
-        padding: 16px 12px;
-      }
-
-      .dashboard-header {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 12px;
-      }
-
-      .header-right {
-        text-align: left;
-      }
-
-      .summary-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 12px;
-      }
-
-      .summary-card {
-        padding: 14px;
-      }
-
-      .summary-card .card-value {
-        font-size: 24px;
-      }
-
-      .table-toolbar {
-        flex-direction: column;
-        align-items: stretch;
-      }
-
-      .search-input {
-        width: 100%;
-      }
-
-      .table-toolbar .toolbar-left {
-        width: 100%;
-      }
-
-      .filter-select {
-        flex: 1;
-      }
-
-      .pagination-bar {
-        flex-direction: column;
-        align-items: center;
-      }
-
-      .charts-row {
-        grid-template-columns: 1fr;
-        gap: 16px;
-      }
-
-      table {
-        font-size: 12px;
-      }
-
-      thead th,
-      tbody td {
-        padding: 8px 10px;
-      }
+      .dashboard-container { padding: 16px 12px; }
+      .dashboard-header { flex-direction: column; align-items: stretch; gap: 12px; }
+      .header-right { text-align: left; }
+      .summary-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+      .summary-card { padding: 14px; }
+      .summary-card .card-value { font-size: 24px; }
+      .table-toolbar { flex-direction: column; align-items: stretch; }
+      .search-input { width: 100%; }
+      .table-toolbar .toolbar-left { width: 100%; }
+      .filter-select { flex: 1; }
+      .pagination-bar { flex-direction: column; align-items: center; }
+      .charts-row { grid-template-columns: 1fr; gap: 16px; }
+      table { font-size: 12px; }
+      thead th, tbody td { padding: 8px 10px; }
     }
 
     @media (max-width: 480px) {
-      .summary-grid {
-        grid-template-columns: 1fr 1fr;
-        gap: 8px;
-      }
-
-      .summary-card .card-value {
-        font-size: 20px;
-      }
-
-      .header-left h1 {
-        font-size: 20px;
-      }
+      .summary-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+      .summary-card .card-value { font-size: 20px; }
+      .header-left h1 { font-size: 20px; }
     }
   </style>
 </head>
 <body>
 
-  <!-- ============================================================
-       Dashboard Container
-       ============================================================ -->
   <div class="dashboard-container">
 
     <!-- ============================================================
@@ -705,9 +681,7 @@
         <div class="current-time" id="currentTime">--:--:--</div>
         <div class="current-date" id="currentDate">---</div>
         <div class="header-actions" style="margin-top:10px;">
-          <button class="btn-refresh" id="refreshBtn" onclick="loadData()">
-            ⟳ Refresh Data
-          </button>
+          <button class="btn-refresh" id="refreshBtn" onclick="loadData()">⟳ Refresh Data</button>
         </div>
       </div>
     </header>
@@ -766,7 +740,6 @@
          ============================================================ -->
     <section class="table-section" id="tableSection">
 
-      <!-- Toolbar -->
       <div class="table-toolbar">
         <div class="toolbar-left">
           <input type="text" class="search-input" id="searchInput" placeholder="🔍 Search by DC name..." oninput="filterAndRenderTable()">
@@ -782,14 +755,14 @@
         </div>
       </div>
 
-      <!-- Table -->
+      <!-- Table structure matches the updated DB schema -->
       <div class="table-wrapper">
         <table>
           <thead>
             <tr>
               <th onclick="sortTable('DCName')">DCName <span class="sort-indicator"></span></th>
               <th onclick="sortTable('DomainName')">Domain <span class="sort-indicator"></span></th>
-              <th onclick="sortTable('PowerStatus')">Power <span class="sort-indicator"></span></th>
+              <th onclick="sortTable('PingStatus')">Ping <span class="sort-indicator"></span></th>
               <th onclick="sortTable('DNS')">DNS <span class="sort-indicator"></span></th>
               <th onclick="sortTable('NetBIOS')">NetBIOS <span class="sort-indicator"></span></th>
               <th onclick="sortTable('LDAP')">LDAP <span class="sort-indicator"></span></th>
@@ -798,31 +771,28 @@
               <th onclick="sortTable('SYSVOL')">SYSVOL <span class="sort-indicator"></span></th>
               <th onclick="sortTable('NetLogon')">NetLogon <span class="sort-indicator"></span></th>
               <th onclick="sortTable('GlobalCatalog')">GC <span class="sort-indicator"></span></th>
-              <th onclick="sortTable('FSMORoleHolder')">FSMO <span class="sort-indicator"></span></th>
               <th onclick="sortTable('ADWS')">ADWS <span class="sort-indicator"></span></th>
-              <th onclick="sortTable('DiskSpaceOK')">Disk <span class="sort-indicator"></span></th>
-              <th onclick="sortTable('CPUHealthy')">CPU <span class="sort-indicator"></span></th>
-              <th onclick="sortTable('MemoryHealthy')">Memory <span class="sort-indicator"></span></th>
+              <th onclick="sortTable('FSMORoles')">FSMO Roles <span class="sort-indicator"></span></th>
+              <th>Disk Free</th>
+              <th>CPU</th>
+              <th>Memory</th>
               <th onclick="sortTable('EventLogHealthy')">EventLog <span class="sort-indicator"></span></th>
               <th onclick="sortTable('OverallHealth')">Health <span class="sort-indicator"></span></th>
               <th onclick="sortTable('HealthScore')">Score <span class="sort-indicator"></span></th>
               <th onclick="sortTable('LastChecked')">Last Checked <span class="sort-indicator"></span></th>
+              <th>Next Scan</th>
             </tr>
           </thead>
           <tbody id="tableBody">
-            <!-- Dynamic rows rendered here -->
           </tbody>
         </table>
       </div>
 
-      <!-- Pagination -->
       <div class="pagination-bar">
         <div>
           Showing <span id="pageStart">0</span>–<span id="pageEnd">0</span> of <span id="totalRecords">0</span>
         </div>
-        <div class="pagination-controls" id="paginationControls">
-          <!-- Page buttons rendered here -->
-        </div>
+        <div class="pagination-controls" id="paginationControls"></div>
       </div>
     </section>
 
@@ -832,7 +802,6 @@
     // ============================================================
     // State
     // ============================================================
-    // Always connect to Render API — no localhost fallback
     const API_BASE = 'https://portfolio-api-3sx8.onrender.com';
 
     let allRecords = [];
@@ -845,11 +814,10 @@
     let pieChartInstance = null;
     let barChartInstance = null;
 
-    // Health check fields (boolean)
+    // Boolean health check fields matching the updated DB schema
     const BOOL_FIELDS = [
-      'PowerStatus', 'DNS', 'NetBIOS', 'LDAP', 'Kerberos', 'Replication',
-      'SYSVOL', 'NetLogon', 'GlobalCatalog', 'FSMORoleHolder', 'ADWS',
-      'DiskSpaceOK', 'CPUHealthy', 'MemoryHealthy', 'EventLogHealthy'
+      'PingStatus', 'DNS', 'NetBIOS', 'LDAP', 'Kerberos', 'Replication',
+      'SYSVOL', 'NetLogon', 'GlobalCatalog', 'ADWS', 'EventLogHealthy'
     ];
 
     // ============================================================
@@ -857,10 +825,10 @@
     // ============================================================
     function updateClock() {
       const now = new Date();
-      const timeStr = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
-      const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-      document.getElementById('currentTime').textContent = timeStr;
-      document.getElementById('currentDate').textContent = dateStr;
+      document.getElementById('currentTime').textContent =
+        now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      document.getElementById('currentDate').textContent =
+        now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     }
     updateClock();
     setInterval(updateClock, 1000);
@@ -877,14 +845,17 @@
     }
 
     // ============================================================
-    // Business Logic: Compute health score
+    // Business Logic
     // ============================================================
+    function normalizeBool(val) {
+      return val === true || val === 1 || val === 'TRUE' || val === 'true' || val === 1;
+    }
+
+    /** Compute health score based on 11 boolean fields only */
     function computeHealthScore(record) {
       let trueCount = 0;
       for (const field of BOOL_FIELDS) {
-        if (record[field] === true || record[field] === 1 || record[field] === 'TRUE' || record[field] === 'true' || record[field] === 1) {
-          trueCount++;
-        }
+        if (normalizeBool(record[field])) trueCount++;
       }
       return Math.round((trueCount / BOOL_FIELDS.length) * 100);
     }
@@ -901,8 +872,23 @@
       return 'Critical';
     }
 
-    function normalizeBool(val) {
-      return val === true || val === 1 || val === 'TRUE' || val === 'true' || val === 1;
+    /** Parse "X GB / Y GB" string and return usage percentage */
+    function parseDiskUsage(diskFreeStr) {
+      if (!diskFreeStr) return null;
+      const match = diskFreeStr.match(/([\d.]+)\s*GB\s*\/\s*([\d.]+)\s*GB/i);
+      if (!match) return null;
+      const free = parseFloat(match[1]);
+      const total = parseFloat(match[2]);
+      if (!total) return null;
+      return Math.round(((total - free) / total) * 100);
+    }
+
+    /** Get color class for a percentage value */
+    function pctColor(val) {
+      if (val === null || val === undefined) return '';
+      if (val >= 90) return 'red';
+      if (val >= 75) return 'orange';
+      return 'green';
     }
 
     // ============================================================
@@ -911,27 +897,22 @@
     function renderSummary(records) {
       const total = records.length;
       let healthy = 0, warning = 0, critical = 0;
-      let latestScan = null;
 
       for (const r of records) {
         const status = getHealthStatus(r);
         if (status === 'Healthy') healthy++;
         else if (status === 'Warning') warning++;
         else critical++;
-
-        if (r.LastChecked) {
-          const d = new Date(r.LastChecked);
-          if (!latestScan || d > latestScan) latestScan = d;
-        }
       }
+
+      // Show the current time as the scan time — reflects when data was last refreshed
+      const now = new Date();
 
       document.getElementById('totalDCs').textContent = total;
       document.getElementById('healthyCount').textContent = healthy;
       document.getElementById('warningCount').textContent = warning;
       document.getElementById('criticalCount').textContent = critical;
-      document.getElementById('lastScanTime').textContent = latestScan
-        ? latestScan.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-        : 'N/A';
+      document.getElementById('lastScanTime').textContent = now.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
     }
 
     // ============================================================
@@ -981,7 +962,7 @@
         }
       });
 
-      // Bar Chart
+      // Bar Chart — Health Score per DC based on 11 bool fields
       const barCtx = document.getElementById('barChart').getContext('2d');
       if (barChartInstance) barChartInstance.destroy();
 
@@ -1014,9 +995,7 @@
             x: {
               min: 0,
               max: 100,
-              grid: {
-                color: 'rgba(42, 50, 80, 0.5)'
-              },
+              grid: { color: 'rgba(42, 50, 80, 0.5)' },
               ticks: {
                 color: getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim() || '#5a6488',
                 font: { size: 11 }
@@ -1030,11 +1009,37 @@
               }
             }
           },
-          plugins: {
-            legend: { display: false }
-          }
+          plugins: { legend: { display: false } }
         }
       });
+    }
+
+    /**
+     * Calculate the next scheduled scan time for a DC.
+     * Scans occur every 15 minutes from the LastChecked timestamp.
+     * Returns { nextScan: Date, in: string, isOverdue: boolean }
+     */
+    function getNextScanInfo(lastCheckedStr) {
+      if (!lastCheckedStr) return { nextScan: null, in: '—', isOverdue: false };
+      const lastCheck = new Date(lastCheckedStr);
+      const now = new Date();
+      const diff = now - lastCheck;
+      const minsOver = Math.floor(diff / 60000);
+      const intervals = Math.floor(minsOver / 15);
+      const nextScan = new Date(lastCheck.getTime() + (intervals + 1) * 15 * 60 * 1000);
+      const remainingMs = nextScan - now;
+      const isOverdue = remainingMs < 0;
+      let inStr;
+      if (remainingMs <= 0) {
+        inStr = 'Now';
+      } else if (remainingMs < 60000) {
+        inStr = `${Math.ceil(remainingMs / 1000)}s`;
+      } else if (remainingMs < 3600000) {
+        inStr = `${Math.ceil(remainingMs / 60000)}m`;
+      } else {
+        inStr = `${Math.ceil(remainingMs / 3600000)}h`;
+      }
+      return { nextScan, in: inStr, isOverdue };
     }
 
     // ============================================================
@@ -1042,10 +1047,12 @@
     // ============================================================
     function renderTable(records) {
       const tbody = document.getElementById('tableBody');
+      if (!tbody) return;
+
       if (!records.length) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="20" style="text-align:center;padding:40px;color:var(--text-muted);">
+            <td colspan="21" style="text-align:center;padding:40px;color:var(--text-muted);">
               <div style="font-size:32px;margin-bottom:8px;">📋</div>
               No records match the current filter.
             </td>
@@ -1069,19 +1076,77 @@
         const scoreClass = score >= 90 ? 'green' : score >= 70 ? 'orange' : 'red';
         const healthClass = health.toLowerCase();
 
+        // Disk usage
+        const diskPct = parseDiskUsage(r.DiskFree);
+        const diskColor = pctColor(diskPct);
+
+        // CPU usage
+        const cpuVal = r.CPUUsage != null ? Number(r.CPUUsage) : null;
+        const cpuColor = pctColor(cpuVal);
+
+        // Memory usage
+        const memVal = r.MemoryUsage != null ? Number(r.MemoryUsage) : null;
+        const memColor = pctColor(memVal);
+
+        // Next scan info
+        const nextInfo = getNextScanInfo(r.LastChecked);
+
         html += '<tr>';
         html += `<td>${escHtml(r.DCName || '—')}</td>`;
         html += `<td>${escHtml(r.DomainName || '—')}</td>`;
 
-        // Boolean fields
-        for (const field of BOOL_FIELDS) {
-          const val = normalizeBool(r[field]);
-          html += `<td>${val
-            ? '<span class="status-badge true"><span class="icon">✓</span> TRUE</span>'
-            : '<span class="status-badge false"><span class="icon">✗</span> FALSE</span>'
-          }</td>`;
-        }
+        // 11 boolean fields
+        html += renderBoolCell(r.PingStatus);
+        html += renderBoolCell(r.DNS);
+        html += renderBoolCell(r.NetBIOS);
+        html += renderBoolCell(r.LDAP);
+        html += renderBoolCell(r.Kerberos);
+        html += renderBoolCell(r.Replication);
+        html += renderBoolCell(r.SYSVOL);
+        html += renderBoolCell(r.NetLogon);
+        html += renderBoolCell(r.GlobalCatalog);
+        html += renderBoolCell(r.ADWS);
 
+        // FSMO Roles (string)
+        html += `<td><span class="metric-text">${escHtml(r.FSMORoles || 'None')}</span></td>`;
+
+        // Disk Free
+        html += `<td>
+          <div class="metric-bar">
+            <span class="metric-text">${escHtml(r.DiskFree || '—')}</span>
+            ${diskPct !== null ? `
+            <div class="bar">
+              <div class="fill ${diskColor}" style="width:${diskPct}%"></div>
+            </div>
+            <span class="label" style="color:var(--accent-${diskColor});">${diskPct}%</span>
+            ` : ''}
+          </div>
+        </td>`;
+
+        // CPU Usage
+        html += `<td>
+          <div class="metric-bar">
+            <div class="bar">
+              <div class="fill ${cpuColor}" style="width:${cpuVal || 0}%"></div>
+            </div>
+            <span class="label" style="color:var(--accent-${cpuColor});">${cpuVal !== null ? cpuVal + '%' : '—'}</span>
+          </div>
+        </td>`;
+
+        // Memory Usage
+        html += `<td>
+          <div class="metric-bar">
+            <div class="bar">
+              <div class="fill ${memColor}" style="width:${memVal || 0}%"></div>
+            </div>
+            <span class="label" style="color:var(--accent-${memColor});">${memVal !== null ? memVal + '%' : '—'}</span>
+          </div>
+        </td>`;
+
+        // EventLog
+        html += renderBoolCell(r.EventLogHealthy);
+
+        // Overall Health
         html += `<td><span class="health-badge ${healthClass}">● ${health}</span></td>`;
 
         // Score
@@ -1098,6 +1163,15 @@
         const lc = r.LastChecked ? new Date(r.LastChecked).toLocaleString() : '—';
         html += `<td>${lc}</td>`;
 
+        // Next Scan (every 15 minutes from LastChecked)
+        html += `<td>
+          <span class="metric-text" data-next-scan="${r.LastChecked || ''}">
+            ${nextInfo.nextScan ? nextInfo.nextScan.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '—'}
+          </span>
+          <br>
+          <span style="font-size:11px;color:var(--accent-blue);">in ${nextInfo.in}</span>
+        </td>`;
+
         html += '</tr>';
       }
 
@@ -1111,16 +1185,21 @@
       renderPagination(records.length);
     }
 
+    /** Render a green ✓ TRUE or red ✗ FALSE badge */
+    function renderBoolCell(val) {
+      const ok = normalizeBool(val);
+      return ok
+        ? '<td><span class="status-badge true"><span class="icon">✓</span> TRUE</span></td>'
+        : '<td><span class="status-badge false"><span class="icon">✗</span> FALSE</span></td>';
+    }
+
     // ============================================================
     // Pagination
     // ============================================================
     function renderPagination(total) {
       const totalPages = Math.ceil(total / PAGE_SIZE);
       const container = document.getElementById('paginationControls');
-      if (totalPages <= 1) {
-        container.innerHTML = '';
-        return;
-      }
+      if (totalPages <= 1) { container.innerHTML = ''; return; }
 
       let html = '';
       html += `<button class="page-btn" onclick="goToPage(${currentPage - 1})" ${currentPage <= 1 ? 'disabled' : ''}>‹</button>`;
@@ -1143,7 +1222,6 @@
       }
 
       html += `<button class="page-btn" onclick="goToPage(${currentPage + 1})" ${currentPage >= totalPages ? 'disabled' : ''}>›</button>`;
-
       container.innerHTML = html;
     }
 
@@ -1164,15 +1242,10 @@
 
       let records = allRecords;
 
-      // Search filter
       if (search) {
-        records = records.filter(r => {
-          const name = (r.DCName || '').toLowerCase();
-          return name.includes(search);
-        });
+        records = records.filter(r => (r.DCName || '').toLowerCase().includes(search));
       }
 
-      // Health filter
       if (filter !== 'all') {
         records = records.filter(r => getHealthStatus(r) === filter);
       }
@@ -1193,11 +1266,17 @@
         sortDir = 'asc';
       }
 
-      // Update header indicators
-      document.querySelectorAll('thead th').forEach(th => {
-        th.classList.remove('sort-asc', 'sort-desc');
-      });
-      const activeTh = Array.from(document.querySelectorAll('thead th')).find(th => th.textContent.trim().startsWith(key === 'DCName' ? 'DCName' : key));
+      document.querySelectorAll('thead th').forEach(th => th.classList.remove('sort-asc', 'sort-desc'));
+      const activeTh = Array.from(document.querySelectorAll('thead th'))
+        .find(th => th.textContent.trim().startsWith(
+          key === 'DCName' ? 'DCName' :
+          key === 'PingStatus' ? 'Ping' :
+          key === 'DomainName' ? 'Domain' :
+          key === 'GlobalCatalog' ? 'GC' :
+          key === 'FSMORoles' ? 'FSMO' :
+          key === 'EventLogHealthy' ? 'EventLog' :
+          key
+        ));
       if (activeTh) activeTh.classList.add(sortDir === 'asc' ? 'sort-asc' : 'sort-desc');
 
       allRecords.sort((a, b) => {
@@ -1208,6 +1287,9 @@
         } else if (key === 'LastChecked') {
           valA = a.LastChecked ? new Date(a.LastChecked).getTime() : 0;
           valB = b.LastChecked ? new Date(b.LastChecked).getTime() : 0;
+        } else if (key === 'CPUUsage' || key === 'MemoryUsage') {
+          valA = Number(a[key] || 0);
+          valB = Number(b[key] || 0);
         } else {
           valA = (a[key] || '').toString().toLowerCase();
           valB = (b[key] || '').toString().toLowerCase();
@@ -1233,26 +1315,42 @@
     // ============================================================
     // Main Load
     // ============================================================
+    // Cache original table HTML to restore if needed
+    const TABLE_WRAPPER_HTML = document.getElementById('tableSection')
+      ? document.getElementById('tableSection').querySelector('.table-wrapper').innerHTML
+      : '';
+
     async function loadData() {
       const btn = document.getElementById('refreshBtn');
       btn.classList.add('loading');
       btn.textContent = '⟳ Loading...';
 
       const tableSection = document.getElementById('tableSection');
+      const tableWrapper = tableSection.querySelector('.table-wrapper');
 
-      // Show loading state
-      tableSection.querySelector('.table-wrapper').innerHTML = `
-        <div class="loading-overlay">
-          <div class="spinner"></div>
-          <p style="color:var(--text-secondary);">Loading health check data...</p>
-        </div>`;
+      // Ensure table structure exists
+      if (!document.getElementById('tableBody')) {
+        tableWrapper.innerHTML = TABLE_WRAPPER_HTML;
+      }
+
+      const tbody = document.getElementById('tableBody');
+      if (tbody) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="21" style="text-align:center;padding:80px 20px;">
+              <div class="loading-overlay" style="padding:0;border:none;background:transparent;">
+                <div class="spinner"></div>
+                <p style="color:var(--text-secondary);">Loading health check data...</p>
+              </div>
+            </td>
+          </tr>`;
+      }
 
       try {
         const records = await fetchHealthCheckData();
         allRecords = records;
 
         if (!records || records.length === 0) {
-          // Empty state
           document.getElementById('summaryCards').innerHTML = `
             <div style="grid-column:1/-1;text-align:center;padding:60px 20px;background:var(--bg-card);border-radius:var(--radius);border:1px solid var(--border-color);">
               <div style="font-size:48px;margin-bottom:16px;opacity:0.5;">📋</div>
@@ -1263,15 +1361,17 @@
               </p>
             </div>`;
 
-          // Clear charts
           document.querySelector('.charts-row').style.display = 'none';
-          // Clear table
-          tableSection.querySelector('.table-wrapper').innerHTML = `
-            <div class="empty-state">
-              <div class="empty-icon">📋</div>
-              <h3>No health check data available</h3>
-              <p>No records were found in the ADHealthCheck table. Data will appear once AD health checks are executed.</p>
-            </div>`;
+          if (document.getElementById('tableBody')) {
+            document.getElementById('tableBody').innerHTML = `
+              <tr>
+                <td colspan="21" style="text-align:center;padding:60px 20px;color:var(--text-muted);">
+                  <div style="font-size:48px;margin-bottom:16px;opacity:0.5;">📋</div>
+                  <h3 style="color:var(--text-secondary);margin-bottom:8px;">No health check data available</h3>
+                  <p>No records were found in the ADHealthCheck table. Data will appear once AD health checks are executed.</p>
+                </td>
+              </tr>`;
+          }
           document.querySelector('.pagination-bar').style.display = 'none';
           document.querySelector('.table-toolbar').style.display = 'none';
           document.getElementById('recordCount').textContent = '0 records';
@@ -1285,7 +1385,7 @@
         document.querySelector('.pagination-bar').style.display = 'flex';
         document.querySelector('.table-toolbar').style.display = 'flex';
 
-        // Rebuild summary cards HTML
+        // Rebuild summary cards
         document.getElementById('summaryCards').innerHTML = `
           <div class="summary-card total">
             <div class="card-icon">🖥️</div>
@@ -1328,17 +1428,23 @@
 
       } catch (err) {
         console.error('Failed to load health check data:', err);
-        tableSection.querySelector('.table-wrapper').innerHTML = `
-          <div class="error-state">
-            <div class="error-icon">⚠️</div>
-            <h3>Failed to Load Data</h3>
-            <p>${escHtml(err.message || 'Could not connect to the server.')}</p>
-            <p style="margin-top:12px;">
-              <button class="btn-refresh" onclick="loadData()" style="background:var(--accent-red-bg);color:var(--accent-red);border-color:rgba(255,23,68,0.3);">
-                ⟳ Retry
-              </button>
-            </p>
-          </div>`;
+        if (document.getElementById('tableBody')) {
+          document.getElementById('tableBody').innerHTML = `
+            <tr>
+              <td colspan="21" style="text-align:center;padding:60px 20px;">
+                <div class="error-state">
+                  <div class="error-icon" style="font-size:40px;margin-bottom:12px;">⚠️</div>
+                  <h3 style="color:var(--accent-red);margin-bottom:8px;">Failed to Load Data</h3>
+                  <p style="color:var(--text-secondary);font-size:14px;">${escHtml(err.message || 'Could not connect to the server.')}</p>
+                  <p style="margin-top:12px;">
+                    <button class="btn-refresh" onclick="loadData()" style="background:var(--accent-red-bg);color:var(--accent-red);border-color:rgba(255,23,68,0.3);">
+                      ⟳ Retry
+                    </button>
+                  </p>
+                </div>
+              </td>
+            </tr>`;
+        }
       } finally {
         btn.classList.remove('loading');
         btn.textContent = '⟳ Refresh Data';
@@ -1349,6 +1455,52 @@
     // Initialize
     // ============================================================
     document.addEventListener('DOMContentLoaded', loadData);
+
+    // ============================================================
+    // Matrix Rain Effect (matches homepage style)
+    // ============================================================
+    (function() {
+      const canvas = document.getElementById('matrix-canvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+
+      function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+      resize();
+      window.addEventListener('resize', resize);
+
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*()';
+      const fontSize = 14;
+      let columns = Math.floor(canvas.width / fontSize);
+      let drops = Array(columns).fill(1);
+
+      function draw() {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#00ff41';
+        ctx.font = fontSize + 'px monospace';
+
+        for (let i = 0; i < drops.length; i++) {
+          const text = chars[Math.floor(Math.random() * chars.length)];
+          ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+
+          if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+            drops[i] = 0;
+          }
+          drops[i]++;
+        }
+      }
+
+      const matrixInterval = setInterval(draw, 50);
+
+      // Recalculate columns on resize
+      window.addEventListener('resize', () => {
+        columns = Math.floor(canvas.width / fontSize);
+        drops = Array(columns).fill(1);
+      });
+    })();
   </script>
 
 </body>
