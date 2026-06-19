@@ -1346,10 +1346,10 @@
         // Reload data to reflect the new LastChecked times
         await loadData();
         
-        // Show success feedback
-        alert(`Scan completed successfully!\nUpdated ${result.recordsUpdated} records at ${result.scanTime}`);
+        // Scan completed silently - data is refreshed automatically
       } catch (err) {
         console.error('Scan failed:', err);
+        // Only show alert on error
         alert(`Scan failed: ${err.message}`);
       } finally {
         scanBtn.classList.remove('loading');
