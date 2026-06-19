@@ -16,9 +16,26 @@ import express from 'express';
 import cors from 'cors';
 import mysql from 'mysql2/promise';
 
+import fetch from 'node-fetch';
+
 const app = express();
-app.use(cors({ origin: true }));
-app.use(express.json());
+
+const allowedOrigin = process.env.ALLOWED_ORIGIN;
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests without an Origin (like mobile apps, curl, server-to-server)
+    if (!origin) return callback(null, true);
+    if (!allowedOrigin) return callback(new Error('ALLOWED_ORIGIN is not configured'));
+    if (origin === allowedOrigin) return callback(null, true);
+    return callback(new Error('Not allowed by CORS'));
+  },
+  credentials: false
+};
+
+app.use(cors(corsOptions));
+app.use(express.json({ limit: '1mb' }));
+
+
 
 const {
   AIVEN_DB_HOST,
@@ -30,8 +47,11 @@ const {
   AIVEN_AD_USERS_TABLE,
   AIVEN_AD_HEALTH_TABLE,
   AIVEN_M365_LICENSE_TABLE,
-  AIVEN_DHCP_HEALTH_TABLE
+  AIVEN_DHCP_HEALTH_TABLE,
+  FORMSPREE_ENDPOINT,
+  ALLOWED_ORIGIN
 } = process.env;
+
 
 if (!AIVEN_DB_HOST || !AIVEN_DB_USER || !AIVEN_DB_PASSWORD || !AIVEN_DB_NAME) {
   console.warn('Missing DB env vars. Please copy server/.env.example to server/.env and set connection values.');
@@ -401,9 +421,53 @@ app.post('/api/ad/health-check/scan', async (req, res) => {
   }
 });
 
+app.post('/api/contact', async (req, res) => {
+  const endpoint = process.env.FORMSPREE_ENDPOINT;
+  if (!endpoint) return res.status(500).json({ ok: false, error: 'FORMSPREE_ENDPOINT is not configured' });
+
+  const { name, email, message } = req.body || {};
+
+  const nameStr = String(name || '').trim();
+  const emailStr = String(email || '').trim();
+  const messageStr = String(message || '').trim();
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  if (!nameStr) return res.status(400).json({ ok: false, error: 'name is required' });
+  if (!emailStr || !emailRegex.test(emailStr)) return res.status(400).json({ ok: false, error: 'A valid email is required' });
+  if (!messageStr || messageStr.length < 10) return res.status(400).json({ ok: false, error: 'message must be at least 10 characters' });
+
+  try {
+    // Forward as JSON (Formspree supports JSON + form fields)
+    const resp = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({
+        name: nameStr,
+        email: emailStr,
+        message: messageStr
+      })
+    });
+
+
+    if (!resp.ok) {
+      return res.status(502).json({ ok: false, error: 'Formspree request failed' });
+    }
+
+    return res.json({ ok: true, message: 'Thank you for contacting! I will get back to you soon.' });
+  } catch (err) {
+    console.error('[Contact] Error:', err);
+    return res.status(500).json({ ok: false, error: 'Server error' });
+  }
+});
+
 app.post('/api/ad/health-check/scan/:dcName', async (req, res) => {
   if (!hasDb) return res.status(503).json({ ok: false, error: 'DB env vars missing' });
   try {
+
     const table = AIVEN_AD_HEALTH_TABLE || 'ADHealthCheck';
     const { dcName } = req.params;
 
