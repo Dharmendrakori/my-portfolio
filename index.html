@@ -618,7 +618,600 @@
             border: 1px solid rgba(0, 255, 65, 0.2);
         }
 
-        /* Projects Section */
+        /* ===================== ANIMATED PROJECT ICONS ===================== */
+        .project-image {
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(135deg, rgba(0, 255, 65, 0.1), rgba(0, 100, 0, 0.2));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .project-image::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, transparent 50%, var(--card-bg));
+        }
+
+        /* Animated icon wrapper sits inside project-image, above the ::after overlay */
+        .anim-icon {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* ---------- 1. AD Health Check - Heartbeat + Server Pulse ---------- */
+        .icon-ad-health {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+        .icon-ad-health .server-block {
+            display: flex;
+            gap: 3px;
+        }
+        .icon-ad-health .server-block span {
+            width: 12px;
+            height: 16px;
+            background: var(--accent-green);
+            opacity: 0.3;
+            border-radius: 2px;
+            animation: serverBlink 1.5s ease-in-out infinite;
+        }
+        .icon-ad-health .server-block span:nth-child(2) { animation-delay: 0.2s; }
+        .icon-ad-health .server-block span:nth-child(3) { animation-delay: 0.4s; }
+        .icon-ad-health .server-block span:nth-child(4) { animation-delay: 0.6s; }
+        .icon-ad-health .server-block span:nth-child(5) { animation-delay: 0.8s; }
+        @keyframes serverBlink {
+            0%, 100% { opacity: 0.3; transform: scaleY(1); }
+            50% { opacity: 1; transform: scaleY(1.3); box-shadow: 0 0 8px var(--accent-green); }
+        }
+        .icon-ad-health .heart-line {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            margin-top: 4px;
+        }
+        .icon-ad-health .heart-line span {
+            display: block;
+            width: 4px;
+            background: var(--accent-green);
+            border-radius: 1px;
+            animation: heartBeat 1.2s ease-in-out infinite;
+        }
+        .icon-ad-health .heart-line span:nth-child(1) { height: 8px; }
+        .icon-ad-health .heart-line span:nth-child(2) { height: 14px; animation-delay: 0.1s; }
+        .icon-ad-health .heart-line span:nth-child(3) { height: 22px; animation-delay: 0.2s; }
+        .icon-ad-health .heart-line span:nth-child(4) { height: 30px; animation-delay: 0.3s; }
+        .icon-ad-health .heart-line span:nth-child(5) { height: 22px; animation-delay: 0.2s; }
+        .icon-ad-health .heart-line span:nth-child(6) { height: 14px; animation-delay: 0.1s; }
+        .icon-ad-health .heart-line span:nth-child(7) { height: 8px; }
+        .icon-ad-health .heart-line span:nth-child(8) { height: 12px; animation-delay: 0.15s; }
+        .icon-ad-health .heart-line span:nth-child(9) { height: 8px; }
+        @keyframes heartBeat {
+            0%, 100% { background: var(--accent-green); box-shadow: none; }
+            50% { background: #00ff41; box-shadow: 0 0 10px var(--accent-green); }
+        }
+
+        /* ---------- 2. M365 License Alert - Animated Bar Chart ---------- */
+        .icon-license-alert {
+            display: flex;
+            align-items: flex-end;
+            gap: 6px;
+            height: 70px;
+        }
+        .icon-license-alert .bar {
+            width: 16px;
+            background: var(--accent-green);
+            border-radius: 3px 3px 0 0;
+            opacity: 0.7;
+            animation: barGrow 2s ease-in-out infinite;
+        }
+        .icon-license-alert .bar:nth-child(1) { height: 30px; animation-delay: 0s; }
+        .icon-license-alert .bar:nth-child(2) { height: 45px; animation-delay: 0.2s; }
+        .icon-license-alert .bar:nth-child(3) { height: 60px; animation-delay: 0.4s; }
+        .icon-license-alert .bar:nth-child(4) { height: 25px; animation-delay: 0.6s; }
+        .icon-license-alert .bar:nth-child(5) { height: 50px; animation-delay: 0.8s; }
+        .icon-license-alert .bar.critical { background: #ff4444; }
+        @keyframes barGrow {
+            0%, 100% { transform: scaleY(1); opacity: 0.7; }
+            50% { transform: scaleY(1.15); opacity: 1; box-shadow: 0 0 10px var(--accent-green); }
+        }
+        .icon-license-alert .alert-dot {
+            position: absolute;
+            top: 20px;
+            right: 40px;
+            width: 10px;
+            height: 10px;
+            background: #ff4444;
+            border-radius: 50%;
+            animation: alertPulse 1s ease-in-out infinite;
+            box-shadow: 0 0 15px #ff4444;
+        }
+        @keyframes alertPulse {
+            0%, 100% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.5); opacity: 1; }
+        }
+
+        /* ---------- 3. DHCP Health - Network Nodes ---------- */
+        .icon-dhcp {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0;
+            position: relative;
+        }
+        .icon-dhcp .node {
+            width: 28px;
+            height: 28px;
+            border: 2px solid var(--accent-green);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: bold;
+            color: var(--accent-green);
+            animation: nodePulse 2s ease-in-out infinite;
+        }
+        .icon-dhcp .node:nth-child(1) { animation-delay: 0s; }
+        .icon-dhcp .node:nth-child(3) { animation-delay: 0.4s; }
+        .icon-dhcp .node:nth-child(5) { animation-delay: 0.8s; }
+        @keyframes nodePulse {
+            0%, 100% { box-shadow: 0 0 5px rgba(0,255,65,0.3); }
+            50% { box-shadow: 0 0 15px rgba(0,255,65,0.6); transform: scale(1.1); }
+        }
+        .icon-dhcp .conn-line {
+            width: 20px;
+            height: 2px;
+            background: linear-gradient(90deg, var(--accent-green), transparent);
+            position: relative;
+            overflow: hidden;
+        }
+        .icon-dhcp .conn-line::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: var(--accent-green);
+            animation: dataFlow 1.5s linear infinite;
+        }
+        .icon-dhcp .conn-line:nth-child(4)::after { animation-delay: 0.3s; }
+        @keyframes dataFlow {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+        .icon-dhcp .conn-line.reverse::after {
+            background: var(--accent-green);
+            animation-direction: reverse;
+        }
+
+        /* ---------- 4. Time Sync - Animated Clock ---------- */
+        .icon-time-sync {
+            position: relative;
+            width: 70px;
+            height: 70px;
+        }
+        .icon-time-sync .clock-face {
+            width: 60px;
+            height: 60px;
+            border: 3px solid var(--accent-green);
+            border-radius: 50%;
+            position: relative;
+            margin: 5px auto 0;
+        }
+        .icon-time-sync .clock-face .hour {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 3px;
+            height: 16px;
+            background: var(--accent-green);
+            transform-origin: bottom center;
+            transform: translate(-50%, -100%) rotate(0deg);
+            border-radius: 2px;
+            animation: rotateHour 12s linear infinite;
+        }
+        .icon-time-sync .clock-face .minute {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 2px;
+            height: 22px;
+            background: var(--accent-green);
+            transform-origin: bottom center;
+            transform: translate(-50%, -100%) rotate(0deg);
+            border-radius: 2px;
+            animation: rotateMinute 2s linear infinite;
+        }
+        .icon-time-sync .clock-face .center {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 5px;
+            height: 5px;
+            background: var(--accent-green);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 8px var(--accent-green);
+        }
+        @keyframes rotateHour {
+            0% { transform: translate(-50%, -100%) rotate(0deg); }
+            100% { transform: translate(-50%, -100%) rotate(360deg); }
+        }
+        @keyframes rotateMinute {
+            0% { transform: translate(-50%, -100%) rotate(0deg); }
+            100% { transform: translate(-50%, -100%) rotate(360deg); }
+        }
+        .icon-time-sync .sync-arrows {
+            position: absolute;
+            top: -5px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 12px;
+            font-size: 10px;
+            color: var(--accent-green);
+        }
+        .icon-time-sync .sync-arrows i {
+            animation: arrowBounce 1.5s ease-in-out infinite;
+        }
+        .icon-time-sync .sync-arrows i:last-child { animation-delay: 0.75s; }
+        @keyframes arrowBounce {
+            0%, 100% { transform: translateY(0); opacity: 0.5; }
+            50% { transform: translateY(-4px); opacity: 1; }
+        }
+
+        /* ---------- 5. Asset Inventory - Stacking List ---------- */
+        .icon-asset-inventory {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            width: 80px;
+        }
+        .icon-asset-inventory .inv-row {
+            height: 8px;
+            background: var(--accent-green);
+            border-radius: 4px;
+            opacity: 0.3;
+            animation: rowAppear 1.8s ease-in-out infinite;
+        }
+        .icon-asset-inventory .inv-row:nth-child(1) { width: 70%; animation-delay: 0s; }
+        .icon-asset-inventory .inv-row:nth-child(2) { width: 90%; animation-delay: 0.15s; }
+        .icon-asset-inventory .inv-row:nth-child(3) { width: 60%; animation-delay: 0.3s; }
+        .icon-asset-inventory .inv-row:nth-child(4) { width: 85%; animation-delay: 0.45s; }
+        .icon-asset-inventory .inv-row:nth-child(5) { width: 50%; animation-delay: 0.6s; }
+        .icon-asset-inventory .inv-row:nth-child(6) { width: 75%; animation-delay: 0.75s; }
+        .icon-asset-inventory .inv-row:nth-child(7) { width: 40%; animation-delay: 0.9s; }
+        @keyframes rowAppear {
+            0%, 100% { opacity: 0.3; transform: translateX(0); }
+            50% { opacity: 1; transform: translateX(5px); box-shadow: 0 0 8px var(--accent-green); }
+        }
+
+        /* ---------- 6. SSO Health - Shield with Check ---------- */
+        .icon-sso {
+            position: relative;
+            width: 70px;
+            height: 75px;
+        }
+        .icon-sso .shield {
+            position: relative;
+            width: 60px;
+            height: 65px;
+            margin: 5px auto 0;
+            background: linear-gradient(135deg, rgba(0,255,65,0.2), transparent);
+            clip-path: polygon(50% 0%, 100% 15%, 100% 55%, 50% 100%, 0% 55%, 0% 15%);
+            border: 2px solid var(--accent-green);
+            animation: shieldGlow 2s ease-in-out infinite;
+        }
+        @keyframes shieldGlow {
+            0%, 100% { filter: drop-shadow(0 0 5px rgba(0,255,65,0.3)); }
+            50% { filter: drop-shadow(0 0 15px rgba(0,255,65,0.6)); }
+        }
+        .icon-sso .shield .check {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-45deg);
+            width: 18px;
+            height: 10px;
+            border-left: 3px solid var(--accent-green);
+            border-bottom: 3px solid var(--accent-green);
+            animation: checkFlash 2s ease-in-out infinite;
+        }
+        @keyframes checkFlash {
+            0%, 100% { opacity: 0.7; }
+            50% { opacity: 1; filter: drop-shadow(0 0 6px var(--accent-green)); }
+        }
+        .icon-sso .spin-ring {
+            position: absolute;
+            top: 0;
+            left: 5px;
+            width: 60px;
+            height: 60px;
+            border: 2px solid transparent;
+            border-top: 2px solid var(--accent-green);
+            border-radius: 50%;
+            animation: ringSpin 2s linear infinite;
+            opacity: 0.5;
+        }
+        @keyframes ringSpin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* ---------- 7. License Conflict - Magnifying Glass ---------- */
+        .icon-conflict {
+            position: relative;
+            width: 70px;
+            height: 70px;
+        }
+        .icon-conflict .mag-glass {
+            position: relative;
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--accent-green);
+            border-radius: 50%;
+            margin: 5px auto 0;
+            animation: glassScan 3s ease-in-out infinite;
+        }
+        @keyframes glassScan {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+        .icon-conflict .mag-glass .handle {
+            position: absolute;
+            bottom: -14px;
+            left: 50%;
+            transform: translateX(-50%) rotate(45deg);
+            width: 3px;
+            height: 20px;
+            background: var(--accent-green);
+            border-radius: 2px;
+        }
+        .icon-conflict .conflict-x {
+            position: absolute;
+            font-size: 12px;
+            font-weight: bold;
+            color: #ff4444;
+            animation: xPop 2s ease-in-out infinite;
+        }
+        .icon-conflict .conflict-x:nth-child(2) { top: 10px; left: 5px; animation-delay: 0s; }
+        .icon-conflict .conflict-x:nth-child(3) { top: 25px; right: 5px; animation-delay: 0.5s; }
+        .icon-conflict .conflict-x:nth-child(4) { bottom: 20px; left: 15px; animation-delay: 1s; }
+        @keyframes xPop {
+            0%, 100% { transform: scale(0); opacity: 0; }
+            50% { transform: scale(1.2); opacity: 1; }
+        }
+
+        /* ---------- 8. Group Membership - Users with arrows ---------- */
+        .icon-group-audit {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .icon-group-audit .user-icon {
+            width: 30px;
+            height: 30px;
+            border: 2px solid var(--accent-green);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: var(--accent-green);
+            animation: userFloat 2.5s ease-in-out infinite;
+        }
+        .icon-group-audit .user-icon:nth-child(1) { animation-delay: 0s; }
+        .icon-group-audit .user-icon:nth-child(3) { animation-delay: 0.6s; }
+        .icon-group-audit .user-icon:nth-child(5) { animation-delay: 1.2s; }
+        @keyframes userFloat {
+            0%, 100% { transform: translateY(0); box-shadow: 0 0 5px rgba(0,255,65,0.2); }
+            50% { transform: translateY(-6px); box-shadow: 0 0 15px rgba(0,255,65,0.5); }
+        }
+        .icon-group-audit .arrow-connector {
+            width: 16px;
+            height: 2px;
+            background: var(--accent-green);
+            position: relative;
+            overflow: hidden;
+        }
+        .icon-group-audit .arrow-connector::after {
+            content: '→';
+            position: absolute;
+            right: -2px;
+            top: -7px;
+            font-size: 12px;
+            color: var(--accent-green);
+            animation: arrowMove 1.5s ease-in-out infinite;
+        }
+        .icon-group-audit .arrow-connector:nth-child(4)::after { animation-delay: 0.3s; }
+        @keyframes arrowMove {
+            0%, 100% { opacity: 0.3; transform: translateX(0); }
+            50% { opacity: 1; transform: translateX(4px); }
+        }
+
+        /* ---------- 9. Admin Console - Dashboard meters ---------- */
+        .icon-admin-console {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            width: 90px;
+        }
+        .icon-admin-console .dash-row {
+            display: flex;
+            gap: 4px;
+            width: 100%;
+            justify-content: center;
+        }
+        .icon-admin-console .dash-gauge {
+            width: 20px;
+            height: 6px;
+            background: rgba(0,255,65,0.15);
+            border-radius: 3px;
+            overflow: hidden;
+            position: relative;
+        }
+        .icon-admin-console .dash-gauge .fill {
+            height: 100%;
+            background: var(--accent-green);
+            border-radius: 3px;
+            animation: gaugeFill 2s ease-in-out infinite;
+        }
+        .icon-admin-console .dash-gauge:nth-child(1) .fill { width: 80%; animation-delay: 0s; }
+        .icon-admin-console .dash-gauge:nth-child(2) .fill { width: 55%; animation-delay: 0.3s; }
+        .icon-admin-console .dash-gauge:nth-child(3) .fill { width: 90%; animation-delay: 0.6s; }
+        .icon-admin-console .dash-gauge:nth-child(4) .fill { width: 40%; animation-delay: 0.9s; }
+        @keyframes gaugeFill {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; box-shadow: 0 0 8px var(--accent-green); }
+        }
+        .icon-admin-console .dash-pulse {
+            width: 6px;
+            height: 6px;
+            background: var(--accent-green);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--accent-green);
+            animation: dashPulse 1.5s ease-in-out infinite;
+        }
+        @keyframes dashPulse {
+            0%, 100% { opacity: 0.5; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.3); }
+        }
+
+        /* ---------- 9 (Updated). Admin Console - Animated "DK" Text with Orbits ---------- */
+        .icon-admin-dk {
+            position: relative;
+            width: 90px;
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .icon-admin-dk .dk-glow-ring {
+            position: absolute;
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            background: conic-gradient(from 0deg, transparent, var(--accent-green), transparent, var(--accent-green), transparent);
+            -webkit-mask: radial-gradient(circle, transparent 58%, black 59%);
+            mask: radial-gradient(circle, transparent 58%, black 59%);
+            animation: dkRingSpin 3s linear infinite;
+        }
+        @keyframes dkRingSpin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .icon-admin-dk .dk-text-container {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            gap: 4px;
+            font-family: 'Fira Code', monospace;
+            font-weight: 800;
+            font-size: 2rem;
+            letter-spacing: 2px;
+        }
+        .icon-admin-dk .dk-letter {
+            display: inline-block;
+            color: var(--accent-green);
+            text-shadow: 0 0 15px rgba(0, 255, 65, 0.6);
+            animation: dkLetterGlitch 3s ease-in-out infinite;
+        }
+        .icon-admin-dk .dk-d { animation-delay: 0s; }
+        .icon-admin-dk .dk-k { animation-delay: 0.15s; }
+        @keyframes dkLetterGlitch {
+            0%, 85%, 100% { transform: translateY(0) skewX(0); text-shadow: 0 0 15px rgba(0,255,65,0.6); }
+            88% { transform: translateY(-3px) skewX(-5deg); text-shadow: 2px 0 15px var(--accent-green); }
+            91% { transform: translateY(2px) skewX(3deg); text-shadow: -2px 0 15px var(--accent-green); }
+            94% { transform: translateY(-1px) skewX(-2deg); text-shadow: 0 0 20px var(--accent-green); }
+            97% { transform: translateY(0) skewX(0); text-shadow: 0 0 15px rgba(0,255,65,0.6); }
+        }
+        .icon-admin-dk .dk-particles {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+        }
+        .icon-admin-dk .dk-particles span {
+            position: absolute;
+            width: 3px;
+            height: 3px;
+            background: var(--accent-green);
+            border-radius: 50%;
+            animation: particleFloat 2.5s ease-in-out infinite;
+            opacity: 0;
+        }
+        .icon-admin-dk .dk-particles span:nth-child(1) { top: 10%; left: 10%; animation-delay: 0s; }
+        .icon-admin-dk .dk-particles span:nth-child(2) { top: 15%; right: 15%; animation-delay: 0.25s; }
+        .icon-admin-dk .dk-particles span:nth-child(3) { bottom: 20%; left: 20%; animation-delay: 0.5s; }
+        .icon-admin-dk .dk-particles span:nth-child(4) { bottom: 10%; right: 10%; animation-delay: 0.75s; }
+        .icon-admin-dk .dk-particles span:nth-child(5) { top: 5%; left: 50%; animation-delay: 1s; }
+        .icon-admin-dk .dk-particles span:nth-child(6) { top: 50%; left: 5%; animation-delay: 1.25s; }
+        .icon-admin-dk .dk-particles span:nth-child(7) { top: 50%; right: 5%; animation-delay: 1.5s; }
+        .icon-admin-dk .dk-particles span:nth-child(8) { bottom: 5%; left: 40%; animation-delay: 1.75s; }
+        .icon-admin-dk .dk-particles span:nth-child(9) { bottom: 5%; right: 40%; animation-delay: 2s; }
+        .icon-admin-dk .dk-particles span:nth-child(10) { top: 40%; left: 50%; animation-delay: 2.25s; }
+        @keyframes particleFloat {
+            0%, 100% { transform: translate(0, 0) scale(0); opacity: 0; }
+            50% { transform: translate(10px, -15px) scale(1.5); opacity: 1; box-shadow: 0 0 8px var(--accent-green); }
+        }
+        .icon-admin-dk .dk-orbits {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+        }
+        .icon-admin-dk .dk-orbits .orbit {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+            border: 1px solid rgba(0, 255, 65, 0.2);
+            animation: orbitRotate 4s linear infinite;
+        }
+        .icon-admin-dk .dk-orbits .orbit-1 {
+            width: 80px;
+            height: 80px;
+            border-color: rgba(0, 255, 65, 0.15);
+            border-top-color: var(--accent-green);
+        }
+        .icon-admin-dk .dk-orbits .orbit-2 {
+            width: 55px;
+            height: 55px;
+            border-color: rgba(0, 255, 65, 0.1);
+            border-bottom-color: var(--accent-green);
+            animation-direction: reverse;
+            animation-duration: 3s;
+        }
+        @keyframes orbitRotate {
+            0% { transform: translate(-50%, -50%) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        /* ---------- Projects Grid (if used elsewhere) ---------- */
         .projects-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
@@ -637,29 +1230,6 @@
             border-color: rgba(0, 255, 65, 0.4);
             transform: translateY(-8px);
             box-shadow: 0 15px 50px rgba(0, 255, 65, 0.12);
-        }
-
-        .project-image {
-            width: 100%;
-            height: 200px;
-            background: linear-gradient(135deg, rgba(0, 255, 65, 0.1), rgba(0, 100, 0, 0.2));
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 3rem;
-            color: var(--accent-green);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .project-image::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(to bottom, transparent 50%, var(--card-bg));
         }
 
         .project-content {
@@ -1395,8 +1965,49 @@
                 <div class="projects-carousel-viewport">
                         <div class="projects-carousel-track" id="projectsTrack">
                         <div class="projects-carousel-slide project-card reveal">
+                            <div class="project-image">
+                                <div class="anim-icon">
+                                    <div class="icon-admin-dk">
+                                        <div class="dk-glow-ring"></div>
+                                        <div class="dk-text-container">
+                                            <span class="dk-letter dk-d">D</span>
+                                            <span class="dk-letter dk-k">K</span>
+                                        </div>
+                                        <div class="dk-particles">
+                                            <span></span><span></span><span></span><span></span><span></span>
+                                            <span></span><span></span><span></span><span></span><span></span>
+                                        </div>
+                                        <div class="dk-orbits">
+                                            <div class="orbit orbit-1"></div>
+                                            <div class="orbit orbit-2"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="project-content">
+                                <h3>Administrative Tasks Console</h3>
+                                <p>Custom-built PowerShell Windows Forms administration platform designed to improve operational efficiency by consolidating frequently used infrastructure and cloud administration functions into a single, user-friendly console. The solution integrates Active Directory, Exchange Online, SharePoint, Teams, Azure, and system management utilities, reducing administrative effort and improving task consistency.</p>
+                                <div class="project-links">
+                                    <a href="#"><i class="fab fa-github"></i> View Code</a>
+                                    <a href="demo/admin-tasks-demo.html" target="_blank"><i class="fas fa-external-link-alt"></i> Live Demo</a>
+                                </div>
+                            </div>
+                        </div>
 
-                            <div class="project-image"><i class="fas fa-heartbeat"></i></div>
+                        <div class="projects-carousel-slide project-card reveal">
+
+                            <div class="project-image">
+                                <div class="anim-icon">
+                                    <div class="icon-ad-health">
+                                        <div class="server-block">
+                                            <span></span><span></span><span></span><span></span><span></span>
+                                        </div>
+                                        <div class="heart-line">
+                                            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                             <div class="project-content">
                                 <h3>AD Health Check Automation</h3>
                                 <p>Automated PowerShell solution that performs comprehensive Active Directory domain controller health checks, validates critical services, replication, DNS, Netlogon, and FSMO roles, then generates detailed HTML reports with email notifications for proactive monitoring.</p>
@@ -1408,7 +2019,18 @@
                         </div>
 
                         <div class="projects-carousel-slide project-card reveal">
-                            <div class="project-image"><i class="fas fa-chart-pie"></i></div>
+                            <div class="project-image">
+                                <div class="anim-icon">
+                                    <div class="icon-license-alert">
+                                        <div class="bar"></div>
+                                        <div class="bar"></div>
+                                        <div class="bar"></div>
+                                        <div class="bar critical"></div>
+                                        <div class="bar"></div>
+                                        <div class="alert-dot"></div>
+                                    </div>
+                                </div>
+                            </div>
                             <div class="project-content">
                                 <h3>Microsoft 365 License Usage Alert</h3>
                                 <p>Enterprise automation that continuously monitors Microsoft 365 license availability across critical SKUs, generates detailed usage reports, and delivers threshold-based alerts to ensure licenses are replenished before exhaustion impacts business operations.</p>
@@ -1420,7 +2042,17 @@
                         </div>
 
                         <div class="projects-carousel-slide project-card reveal">
-                            <div class="project-image"><i class="fas fa-network-wired"></i></div>
+                            <div class="project-image">
+                                <div class="anim-icon">
+                                    <div class="icon-dhcp">
+                                        <div class="node">S</div>
+                                        <div class="conn-line"></div>
+                                        <div class="node">D</div>
+                                        <div class="conn-line reverse"></div>
+                                        <div class="node">C</div>
+                                    </div>
+                                </div>
+                            </div>
                             <div class="project-content">
                                 <h3>DHCP Health Check Automation</h3>
                                 <p>Enterprise DHCP monitoring and reporting solution that performs automated health assessments across multiple DHCP servers, verifies failover configurations, tracks scope utilization, and provides actionable operational reports for proactive infrastructure management.</p>
@@ -1432,7 +2064,21 @@
                         </div>
 
                         <div class="projects-carousel-slide project-card reveal">
-                            <div class="project-image"><i class="fas fa-clock"></i></div>
+                            <div class="project-image">
+                                <div class="anim-icon">
+                                    <div class="icon-time-sync">
+                                        <div class="sync-arrows">
+                                            <i class="fas fa-sync-alt"></i>
+                                            <i class="fas fa-sync-alt"></i>
+                                        </div>
+                                        <div class="clock-face">
+                                            <div class="hour"></div>
+                                            <div class="minute"></div>
+                                            <div class="center"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                             <div class="project-content">
                                 <h3>AD Domain Controller Time Synchronization Monitor</h3>
                                 <p>Automated PowerShell solution that validates time synchronization across Active Directory domain controllers, verifies NTP sources, stratum levels, synchronization status, and clock drift, then generates detailed HTML reports with proactive alerting to maintain Kerberos authentication reliability.</p>
@@ -1444,7 +2090,19 @@
                         </div>
 
                         <div class="projects-carousel-slide project-card reveal">
-                            <div class="project-image"><i class="fas fa-file-alt"></i></div>
+                            <div class="project-image">
+                                <div class="anim-icon">
+                                    <div class="icon-asset-inventory">
+                                        <div class="inv-row"></div>
+                                        <div class="inv-row"></div>
+                                        <div class="inv-row"></div>
+                                        <div class="inv-row"></div>
+                                        <div class="inv-row"></div>
+                                        <div class="inv-row"></div>
+                                        <div class="inv-row"></div>
+                                    </div>
+                                </div>
+                            </div>
                             <div class="project-content">
                                 <h3>IT Asset Inventory System</h3>
                                 <p>Automated asset discovery and inventory management system using PowerShell with SQL backend and web reporting interface.</p>
@@ -1456,7 +2114,16 @@
                         </div>
 
                         <div class="projects-carousel-slide project-card reveal">
-                            <div class="project-image"><i class="fas fa-user-shield"></i></div>
+                            <div class="project-image">
+                                <div class="anim-icon">
+                                    <div class="icon-sso">
+                                        <div class="spin-ring"></div>
+                                        <div class="shield">
+                                            <div class="check"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                             <div class="project-content">
                                 <h3>AAD Seamless SSO Health Monitor</h3>
                                 <p>Enterprise hybrid identity monitoring solution that proactively validates Azure AD Seamless SSO functionality, Azure AD Connect health, Kerberos configuration, and password rotation compliance to ensure uninterrupted user authentication experiences.</p>
@@ -1468,7 +2135,18 @@
                         </div>
 
                         <div class="projects-carousel-slide project-card reveal">
-                            <div class="project-image"><i class="fas fa-search-dollar"></i></div>
+                            <div class="project-image">
+                                <div class="anim-icon">
+                                    <div class="icon-conflict">
+                                        <div class="mag-glass">
+                                            <div class="handle"></div>
+                                        </div>
+                                        <span class="conflict-x">✕</span>
+                                        <span class="conflict-x">✕</span>
+                                        <span class="conflict-x">✕</span>
+                                    </div>
+                                </div>
+                            </div>
                             <div class="project-content">
                                 <h3>M365 conflicting license assignments detection</h3>
                                 <p>Microsoft 365 cost-optimization automation that analyzes user license assignments, detects redundant SKU combinations, and generates actionable reports to help organizations maximize license utilization while reducing subscription spend.</p>
@@ -1480,25 +2158,23 @@
                         </div>
 
                         <div class="projects-carousel-slide project-card reveal">
-                            <div class="project-image"><i class="fas fa-users-cog"></i></div>
+                            <div class="project-image">
+                                <div class="anim-icon">
+                                    <div class="icon-group-audit">
+                                        <div class="user-icon"><i class="fas fa-user"></i></div>
+                                        <div class="arrow-connector"></div>
+                                        <div class="user-icon"><i class="fas fa-user"></i></div>
+                                        <div class="arrow-connector"></div>
+                                        <div class="user-icon"><i class="fas fa-user-plus"></i></div>
+                                    </div>
+                                </div>
+                            </div>
                             <div class="project-content">
                                 <h3>AD Group Membership Change Auditor</h3>
                                 <p>Automated PowerShell auditing solution that tracks Active Directory group membership changes across domain controllers, capturing user additions and removals, identifying the initiating account, and generating detailed reports to support security monitoring, compliance, and access governance.</p>
                                 <div class="project-links">
                                     <a href="#"><i class="fab fa-github"></i> View Code</a>
                                     <a href="#"><i class="fas fa-external-link-alt"></i> Live Demo</a>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="projects-carousel-slide project-card reveal">
-                            <div class="project-image"><i class="fas fa-tachometer-alt"></i></div>
-                            <div class="project-content">
-                                <h3>Administrative Tasks Console</h3>
-                                <p>Custom-built PowerShell Windows Forms administration platform designed to improve operational efficiency by consolidating frequently used infrastructure and cloud administration functions into a single, user-friendly console. The solution integrates Active Directory, Exchange Online, SharePoint, Teams, Azure, and system management utilities, reducing administrative effort and improving task consistency.</p>
-                                <div class="project-links">
-                                    <a href="#"><i class="fab fa-github"></i> View Code</a>
-                                    <a href="demo/admin-tasks-demo.html" target="_blank"><i class="fas fa-external-link-alt"></i> Live Demo</a>
                                 </div>
                             </div>
                         </div>
@@ -2030,4 +2706,3 @@ body: JSON.stringify({
     </script>
 </body>
 </html>
-
