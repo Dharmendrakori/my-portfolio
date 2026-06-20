@@ -47,14 +47,18 @@ const corsOptions = {
     console.log('Origin:', origin);
     console.log('ALLOWED_ORIGIN:', process.env.ALLOWED_ORIGIN);
 
-    // Allow requests without an Origin (like mobile apps, curl, server-to-server)
+    // Allow requests without an Origin (like mobile apps, curl, server-to-server, file:// protocol)
     if (!origin) return callback(null, true);
 
-    // If not configured, do not hard-fail preflight with a 500.
-    // We let CORS middleware decide; for explicit origin mismatch we simply disallow.
-    if (!allowedOrigin) return callback(null, false);
+    // Allow localhost and 127.0.0.1 on any port (for local development)
+    const localhostRegex = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
+    if (localhostRegex.test(origin)) return callback(null, true);
 
-    if (origin === allowedOrigin) return callback(null, true);
+    // If ALLOWED_ORIGIN is configured, only allow that specific origin
+    if (allowedOrigin && origin === allowedOrigin) return callback(null, true);
+
+    // If ALLOWED_ORIGIN is not configured, allow all origins (fallback for dev)
+    if (!allowedOrigin) return callback(null, true);
 
     return callback(null, false);
   },
