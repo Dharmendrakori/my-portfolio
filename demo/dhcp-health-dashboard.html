@@ -705,14 +705,14 @@
         <table>
           <thead>
             <tr>
-              <th onclick="sortTable('DHCPServer')">DHCP Server <span class="sort-indicator"></span></th>
-              <th onclick="sortTable('PingStatus')">Ping Status <span class="sort-indicator"></span></th>
-              <th onclick="sortTable('DHCPServiceStatus')">DHCP Service <span class="sort-indicator"></span></th>
-              <th onclick="sortTable('ScopeCount')">Scope Count <span class="sort-indicator"></span></th>
-              <th onclick="sortTable('UsagePercentage')">Usage % <span class="sort-indicator"></span></th>
-              <th onclick="sortTable('FailoverPartner')">Failover Partner <span class="sort-indicator"></span></th>
-              <th onclick="sortTable('FailoverMode')">Failover Mode <span class="sort-indicator"></span></th>
-              <th onclick="sortTable('LastChecked')">Last Checked <span class="sort-indicator"></span></th>
+              <th onclick="sortTable('dhcpServer')">DHCP Server <span class="sort-indicator"></span></th>
+              <th onclick="sortTable('pingStatus')">Ping Status <span class="sort-indicator"></span></th>
+              <th onclick="sortTable('dhcpServiceStatus')">DHCP Service <span class="sort-indicator"></span></th>
+              <th onclick="sortTable('scopeCount')">Scope Count <span class="sort-indicator"></span></th>
+              <th onclick="sortTable('usagePercentage')">Usage % <span class="sort-indicator"></span></th>
+              <th onclick="sortTable('failoverPartner')">Failover Partner <span class="sort-indicator"></span></th>
+              <th onclick="sortTable('failoverMode')">Failover Mode <span class="sort-indicator"></span></th>
+              <th onclick="sortTable('lastChecked')">Last Checked <span class="sort-indicator"></span></th>
             </tr>
           </thead>
           <tbody id="tableBody">
@@ -851,11 +851,11 @@
     }
 
     function getPingStatus(record) {
-      return record.PingStatus === 'True' ? 'Reachable' : 'Unreachable';
+      return record.pingStatus === 'True' ? 'Reachable' : 'Unreachable';
     }
 
     function getServiceStatus(record) {
-      return record.DHCPServiceStatus === 'Running' ? 'Running' : 'Stopped';
+      return record.dhcpServiceStatus === 'Running' ? 'Running' : 'Stopped';
     }
 
     function getUsageColor(value) {
@@ -874,9 +874,9 @@
     }
 
     function getServerHealth(record) {
-      if (record.OverallStatus) return record.OverallStatus;
-      if (record.PingStatus === 'False' || record.DHCPServiceStatus === 'Stopped') return 'Critical';
-      if (Number(record.UsagePercentage || 0) >= 80) return 'Warning';
+      if (record.overallStatus) return record.overallStatus;
+      if (record.pingStatus === 'False' || record.dhcpServiceStatus === 'Stopped') return 'Critical';
+      if (Number(record.usagePercentage || 0) >= 80) return 'Warning';
       return 'Healthy';
     }
 
@@ -900,10 +900,10 @@
       const barCtx = document.getElementById('barChart').getContext('2d');
       if (barChartInstance) barChartInstance.destroy();
 
-      const labels = records.map(r => r.DHCPServer || 'Unknown');
-      const usageValues = records.map(r => Number(r.UsagePercentage || 0));
+      const labels = records.map(r => r.dhcpServer || 'Unknown');
+      const usageValues = records.map(r => Number(r.usagePercentage || 0));
       const barColors = records.map(r => {
-        const u = Number(r.UsagePercentage || 0);
+        const u = Number(r.usagePercentage || 0);
         if (u <= 70) return getComputedStyle(document.documentElement).getPropertyValue('--accent-green').trim() || '#00c853';
         if (u <= 85) return getComputedStyle(document.documentElement).getPropertyValue('--accent-orange').trim() || '#ff9100';
         return getComputedStyle(document.documentElement).getPropertyValue('--accent-red').trim() || '#ff1744';
@@ -988,7 +988,7 @@
 
       const failoverCounts = {};
       for (const r of records) {
-        const mode = r.FailoverMode || 'Unknown';
+        const mode = r.failoverMode || 'Unknown';
         failoverCounts[mode] = (failoverCounts[mode] || 0) + 1;
       }
       const failoverLabels = Object.keys(failoverCounts);
@@ -1095,16 +1095,15 @@
       }
 
       tbody.innerHTML = pageData.map(r => {
-        const pingOk = r.PingStatus === 'True';
-        const serviceRunning = r.DHCPServiceStatus === 'Running';
-        const usage = Number(r.UsagePercentage || 0);
+        const pingOk = r.pingStatus === 'True';
+        const serviceRunning = r.dhcpServiceStatus === 'Running';
+        const usage = Number(r.usagePercentage || 0);
         const usageColor = getUsageColor(usage);
-        const failoverClass = getFailoverClass(r.FailoverMode);
-        const health = getServerHealth(r);
+        const failoverClass = getFailoverClass(r.failoverMode);
 
         return `
           <tr>
-            <td>${escapeHtml(r.DHCPServer)}</td>
+            <td>${escapeHtml(r.dhcpServer)}</td>
             <td>
               <span class="status-badge ${pingOk ? 'true' : 'false'}">
                 <span class="icon">${pingOk ? '●' : '●'}</span> ${pingOk ? 'Reachable' : 'Unreachable'}
@@ -1112,10 +1111,10 @@
             </td>
             <td>
               <span class="status-badge ${serviceRunning ? 'true' : 'false'}">
-                <span class="icon">${serviceRunning ? '●' : '●'}</span> ${escapeHtml(r.DHCPServiceStatus)}
+                <span class="icon">${serviceRunning ? '●' : '●'}</span> ${escapeHtml(r.dhcpServiceStatus)}
               </span>
             </td>
-            <td>${r.ScopeCount ?? 0}</td>
+            <td>${r.scopeCount ?? 0}</td>
             <td>
               <div class="usage-cell">
                 <div class="usage-bar">
@@ -1124,16 +1123,11 @@
                 <span class="usage-text ${usageColor}">${usage}%</span>
               </div>
             </td>
-            <td>${r.FailoverPartner ? escapeHtml(r.FailoverPartner) : 'N/A'}</td>
+            <td>${r.failoverPartner ? escapeHtml(r.failoverPartner) : 'N/A'}</td>
             <td>
-              <span class="failover-badge ${failoverClass}">${escapeHtml(r.FailoverMode)}</span>
+              <span class="failover-badge ${failoverClass}">${escapeHtml(r.failoverMode)}</span>
             </td>
-            <td>
-              <span class="status-badge ${health === 'Healthy' ? 'true' : health === 'Warning' ? 'orange' : 'false'}">
-                ${escapeHtml(health)}
-              </span>
-            </td>
-            <td>${r.LastChecked ? escapeHtml(r.LastChecked) : '--'}</td>
+            <td>${r.lastChecked ? escapeHtml(r.lastChecked) : '--'}</td>
           </tr>
         `;
       }).join('');
@@ -1211,14 +1205,14 @@
       } else {
         filteredRecords = allRecords.filter(r => {
           const haystack = [
-            r.DHCPServer,
-            String(r.PingStatus),
-            r.DHCPServiceStatus,
-            String(r.ScopeCount),
-            String(r.UsagePercentage),
-            r.FailoverPartner || '',
-            r.FailoverMode,
-            r.LastChecked || ''
+            r.dhcpServer,
+            String(r.pingStatus),
+            r.dhcpServiceStatus,
+            String(r.scopeCount),
+            String(r.usagePercentage),
+            r.failoverPartner || '',
+            r.failoverMode,
+            r.lastChecked || ''
           ].join(' ').toLowerCase();
           return haystack.includes(term);
         });
