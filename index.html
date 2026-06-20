@@ -567,6 +567,132 @@
             transform: translate(-50%, -50%) scale(0.3);
         }
 
+        /* Glitch effect on letters before merge */
+        .avatar-intro-letter.glitch-d {
+            animation: letterGlitchD 0.4s ease-in-out 2;
+            opacity: 0.8;
+        }
+
+        .avatar-intro-letter.glitch-k {
+            animation: letterGlitchK 0.4s ease-in-out 2;
+            opacity: 0.8;
+        }
+
+        @keyframes letterGlitchD {
+            0% { transform: translate(-120%, -50%) scale(0.8) skewX(0deg); filter: hue-rotate(0deg); }
+            10% { transform: translate(-130%, -48%) scale(0.85) skewX(8deg); filter: hue-rotate(120deg); text-shadow: 2px 0 #ff0040, -2px 0 #00ccff; }
+            20% { transform: translate(-110%, -52%) scale(0.75) skewX(-5deg); filter: hue-rotate(-60deg); text-shadow: -3px 0 #ff0040, 3px 0 #00ccff; }
+            30% { transform: translate(-125%, -50%) scale(0.8) skewX(3deg); filter: hue-rotate(0deg); }
+            40% { transform: translate(-115%, -49%) scale(0.82) skewX(-7deg); filter: hue-rotate(90deg); text-shadow: 4px 0 #ff0040, -2px 0 #00ff41; }
+            50% { transform: translate(-120%, -50%) scale(0.8) skewX(0deg); filter: hue-rotate(0deg); }
+            55% { transform: translate(-135%, -53%) scale(0.7) skewX(12deg); filter: hue-rotate(180deg); text-shadow: -5px 0 #ff0040, 5px 0 #00ccff; opacity: 0.4; }
+            60% { transform: translate(-105%, -47%) scale(0.9) skewX(-10deg); filter: hue-rotate(-120deg); text-shadow: 3px 0 #ff0040, -4px 0 #00ccff; opacity: 0.9; }
+            70% { transform: translate(-120%, -50%) scale(0.8) skewX(0deg); filter: hue-rotate(0deg); opacity: 0.5; }
+            80% { transform: translate(-118%, -51%) scale(0.78) skewX(-3deg); filter: hue-rotate(60deg); text-shadow: 2px 0 #ff0040, -2px 0 #00ccff; opacity: 0.7; }
+            90% { transform: translate(-122%, -49%) scale(0.82) skewX(2deg); filter: hue-rotate(0deg); }
+            100% { transform: translate(-120%, -50%) scale(0.8) skewX(0deg); filter: hue-rotate(0deg); opacity: 0.5; }
+        }
+
+        @keyframes letterGlitchK {
+            0% { transform: translate(20%, -50%) scale(0.8) skewX(0deg); filter: hue-rotate(0deg); }
+            10% { transform: translate(30%, -48%) scale(0.85) skewX(-8deg); filter: hue-rotate(-120deg); text-shadow: -2px 0 #ff0040, 2px 0 #00ccff; }
+            20% { transform: translate(10%, -52%) scale(0.75) skewX(5deg); filter: hue-rotate(60deg); text-shadow: 3px 0 #ff0040, -3px 0 #00ccff; }
+            30% { transform: translate(25%, -50%) scale(0.8) skewX(-3deg); filter: hue-rotate(0deg); }
+            40% { transform: translate(15%, -49%) scale(0.82) skewX(7deg); filter: hue-rotate(-90deg); text-shadow: -4px 0 #ff0040, 2px 0 #00ff41; }
+            50% { transform: translate(20%, -50%) scale(0.8) skewX(0deg); filter: hue-rotate(0deg); }
+            55% { transform: translate(35%, -53%) scale(0.7) skewX(-12deg); filter: hue-rotate(-180deg); text-shadow: 5px 0 #ff0040, -5px 0 #00ccff; opacity: 0.4; }
+            60% { transform: translate(5%, -47%) scale(0.9) skewX(10deg); filter: hue-rotate(120deg); text-shadow: -3px 0 #ff0040, 4px 0 #00ccff; opacity: 0.9; }
+            70% { transform: translate(20%, -50%) scale(0.8) skewX(0deg); filter: hue-rotate(0deg); opacity: 0.5; }
+            80% { transform: translate(18%, -51%) scale(0.78) skewX(3deg); filter: hue-rotate(-60deg); text-shadow: -2px 0 #ff0040, 2px 0 #00ccff; opacity: 0.7; }
+            90% { transform: translate(22%, -49%) scale(0.82) skewX(-2deg); filter: hue-rotate(0deg); }
+            100% { transform: translate(20%, -50%) scale(0.8) skewX(0deg); filter: hue-rotate(0deg); opacity: 0.5; }
+        }
+
+        /* Glitch screen tear overlay */
+        .avatar-intro-glitch-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            z-index: 14;
+            pointer-events: none;
+            opacity: 0;
+            background: var(--bg-dark);
+            overflow: hidden;
+        }
+
+        .avatar-intro-glitch-screen.active {
+            animation: glitchScreen 0.8s ease-in-out forwards;
+        }
+
+        @keyframes glitchScreen {
+            0% { opacity: 0; }
+            10% { opacity: 0.9; }
+            15% { opacity: 0; }
+            20% { opacity: 0.85; }
+            25% { opacity: 0; }
+            30% { opacity: 0.9; }
+            35% { opacity: 0; }
+            40% { opacity: 0; }
+            45% { opacity: 0.7; }
+            50% { opacity: 0; }
+            55% { opacity: 0.85; }
+            60% { opacity: 0; }
+            65% { opacity: 0.6; }
+            70% { opacity: 0; }
+            75% { opacity: 0.5; }
+            80% { opacity: 0; }
+            85% { opacity: 0.3; }
+            90% { opacity: 0; }
+            100% { opacity: 0; }
+        }
+
+        /* Glitch horizontal bars within the screen */
+        .avatar-intro-glitch-screen::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 4px,
+                rgba(0, 255, 65, 0.15) 4px,
+                rgba(0, 255, 65, 0.15) 5px,
+                transparent 5px,
+                transparent 12px,
+                rgba(255, 0, 64, 0.1) 12px,
+                rgba(255, 0, 64, 0.1) 13px,
+                transparent 13px,
+                transparent 20px,
+                rgba(0, 200, 255, 0.08) 20px,
+                rgba(0, 200, 255, 0.08) 21px,
+                transparent 21px
+            );
+            opacity: 0;
+            transform: translateY(-100%);
+        }
+
+        .avatar-intro-glitch-screen.active::before {
+            opacity: 1;
+            animation: glitchBars 0.8s ease-in-out forwards;
+        }
+
+        @keyframes glitchBars {
+            0% { transform: translateY(-100%); opacity: 0; }
+            10% { transform: translateY(0%); opacity: 1; }
+            20% { transform: translateY(-5%); opacity: 0.8; }
+            30% { transform: translateY(3%); opacity: 1; }
+            45% { transform: translateY(-8%); opacity: 0.6; }
+            60% { transform: translateY(5%); opacity: 0.9; }
+            80% { transform: translateY(-2%); opacity: 0.5; }
+            100% { transform: translateY(100%); opacity: 0; }
+        }
+
         /* Scan flash during intro */
         .avatar-intro-scan {
             position: absolute;
@@ -2369,6 +2495,7 @@
                             <span class="avatar-intro-dk-combined" id="introDKCombined">DK</span>
                             <div class="avatar-intro-scan" id="introScan"></div>
                             <div class="avatar-intro-flash" id="introFlash"></div>
+                            <div class="avatar-intro-glitch-screen" id="introGlitchScreen"></div>
                         </div>
                         <img src="public/uploads/DK.jpeg" alt="Dharmendra Kori Avatar">
                     </div>
@@ -3135,15 +3262,17 @@
             const dkCombined = document.getElementById('introDKCombined');
             const scan = document.getElementById('introScan');
             const flash = document.getElementById('introFlash');
+            const glitchScreen = document.getElementById('introGlitchScreen');
 
-            if (!overlay || !letterD || !letterK || !dkCombined || !scan || !flash) return;
+            if (!overlay || !letterD || !letterK || !dkCombined || !scan || !flash || !glitchScreen) return;
 
             // Sequence timing (ms)
             const delay = 500;        // Initial pause
             const dAppear = 600;      // D letter appears
             const kAppear = 600;      // K letter appears
-            const combine = 700;      // Letters merge together
-            const dkShow = 500;       // DK combined shown
+            const combine = 500;      // Letters move toward center
+            const glitchTime = 800;   // Glitch effect duration
+            const dkShow = 400;       // DK combined shown
             const scanTime = 1000;    // Scan line sweeps
             const flashTime = 600;    // Flash burst
 
@@ -3163,25 +3292,33 @@
                 letterK.classList.add('show-k');
                 await step(kAppear);
 
-                // Step 3: Combine both letters toward center
+                // Step 3: Move letters toward center
                 letterD.classList.add('combine-d');
                 letterD.classList.remove('show');
                 letterK.classList.add('combine-k');
                 letterK.classList.remove('show-k');
                 await step(combine);
 
-                // Step 4: Show combined "DK" text, fade out individual letters
+                // Step 4: GLITCH EFFECT - letters glitch out before merging
+                letterD.classList.add('glitch-d');
+                letterK.classList.add('glitch-k');
+                glitchScreen.classList.add('active');
+                await step(glitchTime);
+
+                // Step 5: Show combined "DK" text, fade out individual letters
+                letterD.classList.remove('glitch-d');
+                letterK.classList.remove('glitch-k');
                 letterD.classList.add('fade-letters');
                 letterK.classList.add('fade-letters');
                 dkCombined.classList.add('show');
                 await step(dkShow);
 
-                // Step 5: Scan line sweeps down
+                // Step 6: Scan line sweeps down
                 dkCombined.classList.add('fade-away');
                 scan.classList.add('scan-active');
                 await step(scanTime);
 
-                // Step 6: Flash and reveal image
+                // Step 7: Flash and reveal image
                 flash.classList.add('flash-active');
                 await step(flashTime / 2);
 
