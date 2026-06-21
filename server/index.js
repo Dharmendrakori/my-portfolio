@@ -138,8 +138,20 @@ app.get('/api/ad/users', async (req, res) => {
     const [rows] = await pool.query(sql, params);
 
     const users = rows.map((r) => {
-      const status = r.status ?? r.enabled ?? r.accountStatus ?? null;
+      // Prioritize 'enabled' column since that's what enable/disable endpoints update
+      let status = null;
+      if (r.enabled !== undefined && r.enabled !== null) {
+        // Use enabled column (0 = Inactive, 1 = Active)
+        status = r.enabled == 1 || r.enabled === true || r.enabled === '1' ? 'Active' : 'Inactive';
+      } else if (r.status) {
+        // Fallback to status column if enabled doesn't exist
+        status = r.status;
+      } else if (r.accountStatus) {
+        status = r.accountStatus;
+      }
+      
       return {
+        id: r.id ?? r.user_id ?? null,
         uid: r.uid ?? r.id ?? r.user_id ?? null,
         username: r.username ?? r.samAccountName ?? null,
         cn: r.cn ?? r.displayName ?? r.name ?? null,
@@ -237,8 +249,8 @@ app.put('/api/ad/users/:id/disable', async (req, res) => {
     const existingCols = new Set((colsRows || []).map((r) => r.Field));
 
     let statusCol = null;
-    if (existingCols.has('status')) statusCol = 'status';
-    else if (existingCols.has('enabled')) statusCol = 'enabled';
+    if (existingCols.has('enabled')) statusCol = 'enabled';
+    else if (existingCols.has('status')) statusCol = 'status';
 
     if (!statusCol) {
       return res.status(500).json({ ok: false, error: 'No status column found on table' });
@@ -255,12 +267,18 @@ app.put('/api/ad/users/:id/disable', async (req, res) => {
     } else {
       setValue = await findValidStatusValue(table, statusCol, ['Inactive', 'Disabled', 'disabled', 'inactive']);
     }
-    await pool.query(`UPDATE \`${table}\` SET \`${statusCol}\` = ? WHERE \`${idCol}\` = ?`, [setValue, id]);
+    
+    const [result] = await pool.query(`UPDATE \`${table}\` SET \`${statusCol}\` = ? WHERE \`${idCol}\` = ?`, [setValue, id]);
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ ok: false, error: `User ${id} not found` });
+    }
 
     res.json({ ok: true, message: `User ${id} disabled.` });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ ok: false, error: err?.message || 'Server error' });
+    console.error('Disable user error:', err);
+    console.error('Disable user details - ID:', id, 'Table:', table, 'StatusCol:', statusCol, 'SetValue:', setValue);
+    res.status(500).json({ ok: false, error: err?.message || 'Server error', details: { id, table, statusCol, setValue } });
   }
 });
 
@@ -274,8 +292,8 @@ app.put('/api/ad/users/:id/enable', async (req, res) => {
     const existingCols = new Set((colsRows || []).map((r) => r.Field));
 
     let statusCol = null;
-    if (existingCols.has('status')) statusCol = 'status';
-    else if (existingCols.has('enabled')) statusCol = 'enabled';
+    if (existingCols.has('enabled')) statusCol = 'enabled';
+    else if (existingCols.has('status')) statusCol = 'status';
 
     if (!statusCol) {
       return res.status(500).json({ ok: false, error: 'No status column found on table' });
@@ -292,12 +310,18 @@ app.put('/api/ad/users/:id/enable', async (req, res) => {
     } else {
       setValue = await findValidStatusValue(table, statusCol, ['Active', 'active', 'Enabled']);
     }
-    await pool.query(`UPDATE \`${table}\` SET \`${statusCol}\` = ? WHERE \`${idCol}\` = ?`, [setValue, id]);
+    
+    const [result] = await pool.query(`UPDATE \`${table}\` SET \`${statusCol}\` = ? WHERE \`${idCol}\` = ?`, [setValue, id]);
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ ok: false, error: `User ${id} not found` });
+    }
 
     res.json({ ok: true, message: `User ${id} enabled.` });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ ok: false, error: err?.message || 'Server error' });
+    console.error('Enable user error:', err);
+    console.error('Enable user details - ID:', id, 'Table:', table, 'StatusCol:', statusCol, 'SetValue:', setValue);
+    res.status(500).json({ ok: false, error: err?.message || 'Server error', details: { id, table, statusCol, setValue } });
   }
 });
 

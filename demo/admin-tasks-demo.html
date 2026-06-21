@@ -416,6 +416,51 @@ function renderStep1() {
   });
 }
 
+async function resetPasswordForUser(samAccountName, cn, upn) {
+  await launchPasswordReset();
+  const identifierInput = document.getElementById('pwIdentifier');
+  if (identifierInput && samAccountName) {
+    identifierInput.value = samAccountName;
+  }
+  appendLog(`PS C:\\AdminPanel> Password Reset initiated for ${escapeHtml(cn || samAccountName)}`);
+  setTimeout(() => {
+    pwLookupUser();
+  }, 300);
+}
+
+async function toggleUserStatus(id, currentStatus) {
+  const normalizedStatus = (currentStatus || '').toLowerCase();
+  const isActive = normalizedStatus === 'active' || normalizedStatus === 'enabled';
+  const endpoint = isActive ? '/api/ad/users/' + id + '/disable' : '/api/ad/users/' + id + '/enable';
+  const action = isActive ? 'Disabling' : 'Enabling';
+  
+  appendLog(`PS C:\\AdminPanel> ${action} user ${id}...`);
+  
+  try {
+    const resp = await fetch(`${API_BASE}${endpoint}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+    if (!resp.ok) {
+      const data = await resp.json().catch(() => ({}));
+      throw new Error(data.error || `Failed to ${isActive ? 'disable' : 'enable'} user`);
+    }
+    
+    const data = await resp.json();
+    appendLog(`[OK] ${data.message}`);
+    
+    // Reload the user list to show updated status
+    if (window.__adSearchBound) {
+      await window.loadAdUsersFiltered();
+    }
+    
+  } catch (err) {
+    appendLog(`[ERROR] ${escapeHtml(err.message || err)}`);
+    alert(`Failed to ${isActive ? 'disable' : 'enable'} user: ` + (err.message || err));
+  }
+}
+
 async function pwLookupUser() {
   const identifier = document.getElementById('pwIdentifier').value.trim();
   const errorBox = document.getElementById('pwLookupError');
@@ -826,7 +871,7 @@ async function launchAdUsersAndComputers(){
       btn.textContent = d.label;
       btn.onclick=()=>{
         searchInput.value=d.label;
-        loadAdUsersFiltered();
+        window.loadAdUsersFiltered();
       };
       li.appendChild(btn);
       ul.appendChild(li);
@@ -848,8 +893,8 @@ async function launchAdUsersAndComputers(){
         <td>${escapeHtml(u.last_logon || '')}</td>
         <td>
           <div class="action-btns">
-            <button class="action-btn" title="Reset Password"><i class="fas fa-key"></i></button>
-            <button class="action-btn" title="Disable"><i class="fas fa-ban"></i></button>
+            <button class="action-btn" title="Reset Password" onclick="resetPasswordForUser('${escapeHtml(u.samAccountName || u.username || '')}', '${escapeHtml(u.cn || u.username || '')}', '${escapeHtml(u.userPrincipalName || u.email || '')}')"><i class="fas fa-key"></i></button>
+            <button class="action-btn" title="${escapeHtml((u.status || '').toLowerCase() === 'active' || (u.status || '').toLowerCase() === 'enabled' ? 'Disable' : 'Enable')}" onclick="toggleUserStatus('${escapeHtml(u.id)}', '${escapeHtml(u.status)}')"><i class="fas fa-${(u.status || '').toLowerCase() === 'active' || (u.status || '').toLowerCase() === 'enabled' ? 'ban' : 'check'}"></i></button>
           </div>
         </td>
       `;
@@ -866,11 +911,11 @@ async function launchAdUsersAndComputers(){
   // Bind search once
   if(!window.__adSearchBound){
     window.__adSearchBound = true;
-    document.getElementById('adSearchBtn').addEventListener('click', ()=>loadAdUsersFiltered());
-    searchInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter') loadAdUsersFiltered(); });
+    document.getElementById('adSearchBtn').addEventListener('click', ()=>window.loadAdUsersFiltered());
+    searchInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter') window.loadAdUsersFiltered(); });
   }
 
-  async function loadAdUsersFiltered(){
+  window.loadAdUsersFiltered = async function(){
     const q = searchInput.value || '';
     spinner.classList.remove('hidden');
     errorBox.classList.add('hidden');
@@ -897,8 +942,8 @@ if(!resp.ok){
           <td>${escapeHtml(u.last_logon || '')}</td>
           <td>
             <div class="action-btns">
-              <button class="action-btn" title="Reset Password"><i class="fas fa-key"></i></button>
-              <button class="action-btn" title="Disable"><i class="fas fa-ban"></i></button>
+              <button class="action-btn" title="Reset Password" onclick="resetPasswordForUser('${escapeHtml(u.samAccountName || u.username || '')}', '${escapeHtml(u.cn || u.username || '')}', '${escapeHtml(u.userPrincipalName || u.email || '')}')"><i class="fas fa-key"></i></button>
+              <button class="action-btn" title="${escapeHtml((u.status || '').toLowerCase() === 'active' || (u.status || '').toLowerCase() === 'enabled' ? 'Disable' : 'Enable')}" onclick="toggleUserStatus('${escapeHtml(u.id)}', '${escapeHtml(u.status)}')"><i class="fas fa-${(u.status || '').toLowerCase() === 'active' || (u.status || '').toLowerCase() === 'enabled' ? 'ban' : 'check'}"></i></button>
             </div>
           </td>
         `;
@@ -910,7 +955,7 @@ if(!resp.ok){
     }finally{
       spinner.classList.add('hidden');
     }
-  }
+  };
 
   appendLog('[OK] Open AD Users & Computers loaded.');
 }
