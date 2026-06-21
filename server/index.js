@@ -557,6 +557,159 @@ app.post('/api/ad/health-check/scan/:dcName', async (req, res) => {
 });
 
 // ============================================================
+// Password Reset Demo endpoints
+// ============================================================
+
+app.get('/api/ad/users/lookup', async (req, res) => {
+  if (!hasDb) return res.status(503).json({ ok: false, error: 'DB env vars missing' });
+  try {
+    const table = AIVEN_AD_USERS_TABLE || 'ad_users';
+    const { samAccountName, userPrincipalName } = req.query;
+    const identifier = samAccountName || userPrincipalName;
+
+    if (!identifier) {
+      return res.status(400).json({ ok: false, error: 'samAccountName or userPrincipalName is required' });
+    }
+
+    const [colsRows] = await pool.query(`SHOW COLUMNS FROM \`${table}\``);
+    const existingCols = new Set((colsRows || []).map((r) => r.Field));
+
+    // Build query condition
+    const conditions = [];
+    const params = [];
+
+    if (samAccountName && existingCols.has('samAccountName')) {
+      conditions.push('`samAccountName` = ?');
+      params.push(samAccountName);
+    } else if (samAccountName && existingCols.has('username')) {
+      conditions.push('`username` = ?');
+      params.push(samAccountName);
+    }
+
+    if (userPrincipalName && existingCols.has('userPrincipalName')) {
+      conditions.push('`userPrincipalName` = ?');
+      params.push(userPrincipalName);
+    } else if (userPrincipalName && existingCols.has('email')) {
+      conditions.push('`email` = ?');
+      params.push(userPrincipalName);
+    }
+
+    // Fallback: if no column matched, search by cn or username
+    if (conditions.length === 0) {
+      if (existingCols.has('cn')) { conditions.push('`cn` = ?'); params.push(identifier); }
+      else if (existingCols.has('username')) { conditions.push('`username` = ?'); params.push(identifier); }
+      else { return res.status(500).json({ ok: false, error: 'No searchable columns found' }); }
+    }
+
+    const sql = `SELECT * FROM \`${table}\` WHERE ${conditions.join(' OR ')} LIMIT 1`;
+    const [rows] = await pool.query(sql, params);
+
+    if (!rows || rows.length === 0) {
+      return res.status(404).json({ ok: false, error: `User '${identifier}' not found` });
+    }
+
+    const u = rows[0];
+    res.json({
+      ok: true,
+      user: {
+        id: u.id ?? u.user_id ?? null,
+        username: u.username ?? u.samAccountName ?? null,
+        cn: u.cn ?? u.displayName ?? u.name ?? null,
+        email: u.email ?? u.userPrincipalName ?? null,
+        department: u.department ?? null,
+        title: u.title ?? null,
+        userPrincipalName: u.userPrincipalName ?? u.email ?? null,
+        samAccountName: u.samAccountName ?? u.username ?? null,
+        enabled: u.enabled !== undefined ? Boolean(Number(u.enabled)) : true
+      }
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ ok: false, error: err?.message || 'Server error' });
+  }
+});
+
+app.get('/api/ad/domain-password-policy', async (req, res) => {
+  if (!hasDb) return res.status(503).json({ ok: false, error: 'DB env vars missing' });
+  try {
+    const policyTable = 'domain_password_policy';
+
+    const [tables] = await pool.query("SHOW TABLES LIKE ?", [policyTable]);
+    if (!tables || tables.length === 0) {
+      // Return sensible default
+      return res.json({ ok: true, policy: { min_password_length: 8, complexity_enabled: true } });
+    }
+
+    const [rows] = await pool.query(`SELECT * FROM \`${policyTable}\` ORDER BY id DESC LIMIT 1`);
+
+    if (!rows || rows.length === 0) {
+      return res.json({ ok: true, policy: { min_password_length: 8, complexity_enabled: true } });
+    }
+
+    const p = rows[0];
+    res.json({
+      ok: true,
+      policy: {
+        id: p.id,
+        domain_name: p.domain_name || 'corp.local',
+        min_password_length: p.min_password_length || 8,
+        complexity_enabled: Boolean(p.complexity_enabled)
+      }
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ ok: false, error: err?.message || 'Server error' });
+  }
+});
+
+app.post('/api/ad/users/:id/set-password', async (req, res) => {
+  if (!hasDb) return res.status(503).json({ ok: false, error: 'DB env vars missing' });
+  try {
+    const table = AIVEN_AD_USERS_TABLE || 'ad_users';
+    const { id } = req.params;
+    const { password, isTemporary } = req.body || {};
+
+    if (!password || password.length < 1) {
+      return res.status(400).json({ ok: false, error: 'Password is required' });
+    }
+
+    const [colsRows] = await pool.query(`SHOW COLUMNS FROM \`${table}\``);
+    const existingCols = new Set((colsRows || []).map((r) => r.Field));
+
+    const idCol = existingCols.has('id') ? 'id' : existingCols.has('user_id') ? 'user_id' : null;
+    if (!idCol) {
+      return res.status(500).json({ ok: false, error: 'No ID column found on table' });
+    }
+
+    // Hash the password (simple hash for demo purposes)
+    const crypto = await import('crypto');
+    const password_hash = crypto.createHash('sha256').update(password).digest('hex');
+
+    const updates = {};
+    if (existingCols.has('password_hash')) updates.password_hash = password_hash;
+    if (existingCols.has('pwd_last_set')) updates.pwd_last_set = new Date().toISOString().slice(0, 19).replace('T', ' ');
+    if (existingCols.has('password_last_set')) updates.password_last_set = new Date().toISOString().slice(0, 19).replace('T', ' ');
+    if (existingCols.has('must_change_password') && isTemporary) updates.must_change_password = 1;
+    if (existingCols.has('forcePasswordChange') && isTemporary) updates.forcePasswordChange = 1;
+
+    if (Object.keys(updates).length > 0) {
+      const setClauses = Object.keys(updates).map(k => `\`${k}\` = ?`).join(', ');
+      const updateParams = Object.values(updates);
+      updateParams.push(id);
+      await pool.query(`UPDATE \`${table}\` SET ${setClauses} WHERE \`${idCol}\` = ?`, updateParams);
+    }
+
+    res.json({
+      ok: true,
+      message: `Password set successfully for user ${id}.${isTemporary ? ' User must change at next logon.' : ''}`
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ ok: false, error: err?.message || 'Server error' });
+  }
+});
+
+// ============================================================
 // M365 License Usage Alert
 // ============================================================
 
@@ -751,6 +904,138 @@ app.get('/api/dhcp-health/summary', async (req, res) => {
   } catch (err) {
     console.error('[DHCP Health Summary] Error:', err);
     res.status(500).json({ success: false, error: err?.message || 'Server error' });
+  }
+});
+
+// ============================================================
+// DNS Manager API
+// ============================================================
+
+app.get('/api/dns/records', async (req, res) => {
+  if (!hasDb) return res.status(503).json({ ok: false, error: 'DB env vars missing' });
+  try {
+    const table = process.env.AIVEN_DNS_TABLE || 'dns_records';
+    const zone = String(req.query.zone || 'corp.local').trim();
+
+    const [tables] = await pool.query("SHOW TABLES LIKE ?", [table]);
+    if (!tables || tables.length === 0) {
+      return res.json({ ok: true, records: [], message: 'No DNS records table found' });
+    }
+
+    const [rows] = await pool.query(
+      `SELECT id, zone, name, type, value, ttl, priority, is_active, created_at, updated_at 
+       FROM \`${table}\` 
+       WHERE zone = ? 
+       ORDER BY name ASC, type ASC`,
+      [zone]
+    );
+
+    const records = rows.map(r => ({
+      id: r.id,
+      zone: r.zone,
+      name: r.name,
+      type: r.type,
+      value: r.value,
+      ttl: r.ttl,
+      priority: r.priority,
+      is_active: Boolean(r.is_active),
+      created_at: r.created_at,
+      updated_at: r.updated_at
+    }));
+
+    res.json({ ok: true, records });
+  } catch (err) {
+    console.error('[DNS] Error:', err);
+    res.status(500).json({ ok: false, error: err?.message || 'Server error' });
+  }
+});
+
+app.post('/api/dns/records', async (req, res) => {
+  if (!hasDb) return res.status(503).json({ ok: false, error: 'DB env vars missing' });
+  try {
+    const table = process.env.AIVEN_DNS_TABLE || 'dns_records';
+    const { zone, name, type, value, ttl, priority } = req.body || {};
+
+    if (!name || !type || !value) {
+      return res.status(400).json({ ok: false, error: 'name, type, and value are required' });
+    }
+
+    const validTypes = ['A','CNAME','MX','TXT','NS','PTR','SRV','AAAA'];
+    if (!validTypes.includes(type)) {
+      return res.status(400).json({ ok: false, error: `Invalid DNS type. Allowed: ${validTypes.join(', ')}` });
+    }
+
+    const [result] = await pool.query(
+      `INSERT INTO \`${table}\` (zone, name, type, value, ttl, priority) 
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [zone || 'corp.local', name, type, value, ttl || 3600, priority || null]
+    );
+
+    res.json({ 
+      ok: true, 
+      id: result.insertId, 
+      message: `DNS record created: ${name} (${type})` 
+    });
+  } catch (err) {
+    console.error('[DNS] Create error:', err);
+    res.status(500).json({ ok: false, error: err?.message || 'Server error' });
+  }
+});
+
+app.put('/api/dns/records/:id', async (req, res) => {
+  if (!hasDb) return res.status(503).json({ ok: false, error: 'DB env vars missing' });
+  try {
+    const table = process.env.AIVEN_DNS_TABLE || 'dns_records';
+    const { id } = req.params;
+    const { name, type, value, ttl, priority } = req.body || {};
+
+    const [colsRows] = await pool.query(`SHOW COLUMNS FROM \`${table}\``);
+    const existingCols = new Set((colsRows || []).map((r) => r.Field));
+
+    const updates = {};
+    if (name && existingCols.has('name')) updates.name = name;
+    if (type && existingCols.has('type')) updates.type = type;
+    if (value && existingCols.has('value')) updates.value = value;
+    if (ttl && existingCols.has('ttl')) updates.ttl = ttl;
+    if (existingCols.has('priority')) updates.priority = priority;
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ ok: false, error: 'No valid fields to update' });
+    }
+
+    const setClauses = Object.keys(updates).map(k => `\`${k}\` = ?`).join(', ');
+    const updateParams = Object.values(updates);
+    updateParams.push(id);
+
+    await pool.query(`UPDATE \`${table}\` SET ${setClauses} WHERE id = ?`, updateParams);
+
+    res.json({ ok: true, message: `DNS record ${id} updated` });
+  } catch (err) {
+    console.error('[DNS] Update error:', err);
+    res.status(500).json({ ok: false, error: err?.message || 'Server error' });
+  }
+});
+
+app.delete('/api/dns/records/:id', async (req, res) => {
+  if (!hasDb) return res.status(503).json({ ok: false, error: 'DB env vars missing' });
+  try {
+    const table = process.env.AIVEN_DNS_TABLE || 'dns_records';
+    const { id } = req.params;
+    const zone = String(req.query.zone || 'corp.local').trim();
+
+    const [result] = await pool.query(
+      `DELETE FROM \`${table}\` WHERE id = ? AND zone = ?`,
+      [id, zone]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ ok: false, error: 'DNS record not found' });
+    }
+
+    res.json({ ok: true, message: `DNS record ${id} deleted` });
+  } catch (err) {
+    console.error('[DNS] Delete error:', err);
+    res.status(500).json({ ok: false, error: err?.message || 'Server error' });
   }
 });
 

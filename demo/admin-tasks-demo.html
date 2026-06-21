@@ -5,6 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Administrative Tasks Console - Demo</title>
 <script src="../public/favicon-config.js"></script>
+<script>
+  // Immediately hide splash - runs before anything else
+  (function(){
+    try {
+      var splash = document.getElementById('splash');
+      var app = document.getElementById('app');
+      if(splash) splash.style.display = 'none';
+      if(app) app.classList.remove('hidden');
+    } catch(e) {}
+  })();
+</script>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
 <style>
@@ -12,8 +23,11 @@ body{background:#050505;color:#fff;overflow-x:hidden}
 #matrix{position:fixed;inset:0;z-index:-1;opacity:.25}
 .glass{background:rgba(10,20,10,.92);border:1px solid rgba(0,255,65,.25);box-shadow:0 0 20px rgba(0,255,65,.1)}
 .neon{color:#00ff41}
-.tool{cursor:pointer;transition:.3s}
+.tool{cursor:pointer;transition:all .3s cubic-bezier(.4,0,.2,1);position:relative;overflow:hidden}
+.tool::before{content:'';position:absolute;left:0;top:0;height:100%;width:0;background:linear-gradient(90deg,rgba(0,255,65,.15),transparent);transition:width .4s cubic-bezier(.4,0,.2,1);z-index:0}
+.tool:hover::before{width:100%}
 .tool:hover{transform:translateX(8px);color:#00ff41}
+.tool:active{transform:translateX(12px) scale(.98);transition:all .15s ease}
 #splash{position:fixed;inset:0;background:#000;display:flex;align-items:center;justify-content:center;flex-direction:column;z-index:9999}
 .logo{width:220px;height:220px;border:5px solid #00ff41;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:4rem;color:#00ff41}
 .terminal{background:#000;border:1px solid #00ff41;padding:15px;height:250px;overflow:auto;font-family:monospace}
@@ -44,6 +58,7 @@ body{background:#050505;color:#fff;overflow-x:hidden}
 .ad-search-row input{flex:1;background:rgba(0,0,0,.5);border:1px solid rgba(0,255,65,.22);border-radius:10px;color:#fff;padding:10px 12px;}
 .ad-btn{padding:10px 14px;border:2px solid rgba(0,255,65,.35);background:transparent;color:#00ff41;border-radius:10px;font-weight:700;cursor:pointer;transition:.2s;}
 .ad-btn:hover{background:rgba(0,255,65,.12);box-shadow:0 0 18px rgba(0,255,65,.18);}
+.ad-btn:disabled{opacity:.4;cursor:not-allowed;box-shadow:none;}
 .ad-error{color:#ff4444;padding:10px 16px;}
 .ad-table-wrap{padding:0 16px 16px;}
 .user-table{width:100%;border-collapse:collapse;}
@@ -59,17 +74,70 @@ body{background:#050505;color:#fff;overflow-x:hidden}
 .action-btn{width:34px;height:34px;border-radius:10px;border:1px solid rgba(0,255,65,.22);background:transparent;color:#b0b0b0;cursor:pointer;transition:.2s;}
 .action-btn:hover{border-color:#00ff41;color:#00ff41;box-shadow:0 0 18px rgba(0,255,65,.15)}
 
+/* Password Reset Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;z-index:10000;backdrop-filter:blur(4px);}
+.modal-box{background:rgba(10,20,10,.97);border:1px solid rgba(0,255,65,.35);border-radius:16px;padding:28px 32px;max-width:560px;width:90%;box-shadow:0 0 40px rgba(0,255,65,.15);max-height:90vh;overflow-y:auto;}
+.modal-box h3{color:#00ff41;font-family:monospace;margin-bottom:16px;display:flex;align-items:center;gap:10px;}
+.modal-box .form-label{color:#b0b0b0;font-size:.85rem;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;}
+.modal-box input,.modal-box select{width:100%;background:rgba(0,0,0,.6);border:1px solid rgba(0,255,65,.25);border-radius:10px;color:#fff;padding:10px 14px;margin-bottom:12px;font-size:.95rem;}
+.modal-box input:focus,.modal-box select:focus{outline:none;border-color:#00ff41;box-shadow:0 0 12px rgba(0,255,65,.15);}
+.modal-box .modal-actions{display:flex;gap:12px;margin-top:16px;flex-wrap:wrap;}
+.modal-box .modal-actions button{flex:1;min-width:120px;}
+.modal-box .user-info{background:rgba(0,255,65,.06);border:1px solid rgba(0,255,65,.15);border-radius:10px;padding:12px 16px;margin-bottom:14px;}
+.modal-box .user-info .label{color:#7f7f7f;font-size:.78rem;text-transform:uppercase;}
+.modal-box .user-info .value{color:#fff;font-weight:600;}
+.modal-box .password-display{background:rgba(0,0,0,.7);border:1px solid rgba(0,255,65,.3);border-radius:10px;padding:14px 16px;font-family:monospace;font-size:1.1rem;color:#00ff41;word-break:break-all;margin-bottom:12px;position:relative;}
+.modal-box .password-display .toggle-vis{cursor:pointer;position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#b0b0b0;background:none;border:none;font-size:1.1rem;}
+.modal-box .password-display .toggle-vis:hover{color:#00ff41;}
+.modal-box .copy-btn{background:rgba(0,255,65,.1);border:1px solid rgba(0,255,65,.3);color:#00ff41;padding:8px 16px;border-radius:8px;cursor:pointer;transition:.2s;font-weight:600;}
+.modal-box .copy-btn:hover{background:rgba(0,255,65,.2);box-shadow:0 0 12px rgba(0,255,65,.15);}
+.modal-box .option-card{background:rgba(0,0,0,.4);border:1px solid rgba(0,255,65,.15);border-radius:12px;padding:16px;cursor:pointer;transition:.25s;margin-bottom:10px;}
+.modal-box .option-card:hover{border-color:rgba(0,255,65,.4);background:rgba(0,255,65,.06);}
+.modal-box .option-card.selected{border-color:#00ff41;background:rgba(0,255,65,.1);box-shadow:0 0 16px rgba(0,255,65,.1);}
+.modal-box .option-card .opt-title{color:#00ff41;font-weight:700;margin-bottom:4px;}
+.modal-box .option-card .opt-desc{color:#b0b0b0;font-size:.85rem;}
+.modal-box .policy-info{color:#7f7f7f;font-size:.82rem;margin-bottom:12px;padding:8px 12px;background:rgba(0,0,0,.3);border-radius:8px;border-left:3px solid rgba(0,255,65,.3);}
+.modal-close{position:absolute;top:12px;right:16px;background:none;border:none;color:#7f7f7f;font-size:1.5rem;cursor:pointer;}
+.modal-close:hover{color:#ff4444;}
+.modal-box .step-indicator{display:flex;gap:8px;margin-bottom:16px;}
+.modal-box .step-dot{width:10px;height:10px;border-radius:50%;background:rgba(0,255,65,.15);transition:.3s;}
+.modal-box .step-dot.active{background:#00ff41;box-shadow:0 0 8px rgba(0,255,65,.4);}
+.modal-box .step-dot.done{background:rgba(0,255,65,.4);}
+
+/* DNS Manager Styles */
+.dns-header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px;}
+.dns-header h3{margin:0;display:flex;align-items:center;gap:10px;}
+.dns-controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+.dns-select{background:rgba(0,0,0,.6);border:1px solid rgba(0,255,65,.25);border-radius:10px;color:#fff;padding:10px 14px;font-size:.95rem;min-width:220px;}
+.dns-select:focus{outline:none;border-color:#00ff41;box-shadow:0 0 12px rgba(0,255,65,.15);}
+.dns-table-wrap{overflow:auto;max-height:420px;border:1px solid rgba(0,255,65,.18);border-radius:12px;background:rgba(0,0,0,.25);}
+.dns-table{width:100%;border-collapse:collapse;font-size:.9rem;}
+.dns-table th{color:#00ff41;font-family:monospace;text-transform:uppercase;font-size:.78rem;letter-spacing:.6px;padding:12px;border-bottom:1px solid rgba(0,255,65,.18);background:rgba(0,255,65,.04);position:sticky;top:0;z-index:1;}
+.dns-table td{padding:10px 12px;border-bottom:1px solid rgba(0,255,65,.1);vertical-align:top;}
+.dns-table tr:hover td{background:rgba(0,255,65,.04);}
+.dns-type{display:inline-block;padding:3px 10px;border-radius:999px;font-size:.76rem;font-weight:700;border:1px solid rgba(0,255,65,.25);color:#00ff41;background:rgba(0,255,65,.08);font-family:monospace;}
+.dns-actions{display:flex;gap:8px;}
+.dns-action-btn{width:34px;height:34px;border-radius:10px;border:1px solid rgba(0,255,65,.22);background:transparent;color:#b0b0b0;cursor:pointer;transition:.2s;}
+.dns-action-btn:hover{border-color:#00ff41;color:#00ff41;box-shadow:0 0 18px rgba(0,255,65,.15);}
+.dns-add-row{display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin-top:14px;padding:14px;background:rgba(0,0,0,.25);border:1px solid rgba(0,255,65,.18);border-radius:12px;}
+.dns-field{display:flex;flex-direction:column;gap:4px;flex:1;min-width:140px;}
+.dns-field label{color:#b0b0b0;font-size:.78rem;text-transform:uppercase;letter-spacing:.5px;}
+.dns-field input,.dns-field select{background:rgba(0,0,0,.6);border:1px solid rgba(0,255,65,.25);border-radius:10px;color:#fff;padding:10px 12px;font-size:.95rem;width:100%;box-sizing:border-box;}
+.dns-field input:focus,.dns-field select:focus{outline:none;border-color:#00ff41;box-shadow:0 0 12px rgba(0,255,65,.15);}
+.dns-info{color:#7f7f7f;font-size:.82rem;margin-bottom:12px;padding:8px 12px;background:rgba(0,0,0,.3);border-radius:8px;border-left:3px solid rgba(0,255,65,.3);}
+.dns-empty{color:#7f7f7f;padding:24px;text-align:center;font-style:italic;}
 </style>
+</parameter>
 </head>
 <body>
 <canvas id="matrix"></canvas>
 
-<div id="splash">
+<div id="splash" style="display:none">
   <div class="logo">DK</div>
   <h2 class="neon mt-3">Loading Administrative Tasks...</h2>
 </div>
 
-<div class="container py-4 hidden" id="app">
+<div class="container py-4" id="app">
 <div class="glass p-3 rounded">
 <h2 class="neon"><i class="fas fa-tools"></i> Administrative Tasks Console Demo</h2>
 
@@ -83,20 +151,20 @@ body{background:#050505;color:#fff;overflow-x:hidden}
 <div class="tab-content p-3">
 <div class="tab-pane fade show active" id="home">
 <h4 class="neon">Welcome to Admin Panel</h4>
-<p>Double click tools to launch actions.</p>
+<p>Click tools to launch actions.</p>
 </div>
 
 <div class="tab-pane fade" id="ad">
-<div class="tool" ondblclick="runTool('Open AD Users & Computers')">➜ Open AD Users & Computers</div><hr>
-<div class="tool" ondblclick="runTool('Password Reset')">➜ Password Reset</div><hr>
-<div class="tool" ondblclick="runTool('DNS Manager')">➜ DNS Manager</div><hr>
-<div class="tool" ondblclick="runTool('Account Lockout Tool')">➜ Account Lockout Tool</div>
+<div class="tool" onclick="runTool('Open AD Users & Computers')">➜ Open AD Users & Computers</div><hr>
+<div class="tool" onclick="runTool('Password Reset')">➜ Password Reset</div><hr>
+<div class="tool" onclick="runTool('DNS Manager')">➜ DNS Manager</div><hr>
+<div class="tool" onclick="runTool('Account Lockout Tool')">➜ Account Lockout Tool</div>
 </div>
 
 <div class="tab-pane fade" id="m365">
-<div class="tool" ondblclick="runTool('Exchange Admin')">➜ Exchange Admin</div><hr>
-<div class="tool" ondblclick="runTool('SharePoint Admin')">➜ SharePoint Admin</div><hr>
-<div class="tool" ondblclick="runTool('Mailbox Permissions')">➜ Mailbox Permissions</div>
+<div class="tool" onclick="runTool('Exchange Admin')">➜ Exchange Admin</div><hr>
+<div class="tool" onclick="runTool('SharePoint Admin')">➜ SharePoint Admin</div><hr>
+<div class="tool" onclick="runTool('Mailbox Permissions')">➜ Mailbox Permissions</div>
 </div>
 </div>
 
@@ -126,7 +194,7 @@ PS C:\AdminPanel> Ready...
       <div class="ad-panel-header">
         <div>
           <div class="title"><i class="fas fa-users"></i> Users</div>
-          <div class="ad-subtle">Double-click to act (demo)</div>
+<div class="ad-subtle">Click to act (demo)</div>
         </div>
         <span class="status-badge" style="border-color:rgba(0,255,65,.35);color:#00ff41; background:rgba(0,255,65,.08)"><i class="fas fa-database"></i> MySQL</span>
       </div>
@@ -162,50 +230,63 @@ PS C:\AdminPanel> Ready...
 </div>
 </div>
 
+<!-- Password Reset Modal Container -->
+<div id="passwordResetModal" class="modal-overlay" style="display:none;">
+  <div class="modal-box" style="position:relative;">
+    <button class="modal-close" onclick="closePasswordReset()">&times;</button>
+    <div class="step-indicator" id="pwStepIndicator">
+      <div class="step-dot active" data-step="1"></div>
+      <div class="step-dot" data-step="2"></div>
+      <div class="step-dot" data-step="3"></div>
+      <div class="step-dot" data-step="4"></div>
+    </div>
+    <div id="pwModalContent"></div>
+  </div>
+</div>
+
+<!-- DNS Manager Modal Container -->
+<div id="dnsManagerModal" class="modal-overlay" style="display:none;">
+  <div class="modal-box" style="position:relative;max-width:1100px;">
+    <button class="modal-close" onclick="closeDnsManager()">&times;</button>
+    <div id="dnsModalContent"></div>
+  </div>
+</div>
+
+<!-- DNS Edit Record Modal -->
+<div id="dnsEditModal" class="modal-overlay" style="display:none;">
+  <div class="modal-box" style="position:relative;max-width:560px;">
+    <button class="modal-close" onclick="closeDnsEditModal()">&times;</button>
+    <h3><i class="fas fa-pen"></i> Edit DNS Record</h3>
+    <div id="dnsEditContent"></div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 const API_BASE = 'https://portfolio-api-3sx8.onrender.com';
 console.log('API_BASE', API_BASE);
 
-async function boot(){
-  // Wait for API health to avoid looking "stuck" when backend fails.
+function boot(){
   const splash = document.getElementById('splash');
   const appEl = document.getElementById('app');
-  const logo = document.querySelector('.logo');
 
-  const setStatus = (msg, color) => {
-    const h2 = splash.querySelector('h2');
-    h2.textContent = msg;
-    h2.style.color = color || '#00ff41';
-  };
+  // Show app immediately - no waiting
+  splash.style.display='none';
+  appEl.classList.remove('hidden');
 
-  // If the splash takes too long, users interpret it as “stuck on logo”.
-  // Hide it as a hard fallback to avoid a permanent stuck UI.
-  setStatus('Connecting to Admin API...', '#00ff41');
-  setTimeout(()=>{splash.style.display='none'; appEl.classList.remove('hidden');}, 3500);
-
-  try{
-    const resp = await fetch(`${API_BASE}/api/health`, { cache: 'no-store' });
-
-    if(!resp.ok){
-      throw new Error(`Health check failed: HTTP ${resp.status}`);
-    }
-
-    console.log('Health check passed');
-    splash.style.display='none';
-    appEl.classList.remove('hidden');
-  }catch(e){
-    console.error(e);
-    setStatus('API Offline', '#ff4444');
-    setTimeout(()=>{splash.style.display='none'; appEl.classList.remove('hidden');}, 800);
+  // Log API status in background (non-blocking)
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 3000);
+    fetch(`${API_BASE}/api/health`, { cache: 'no-store', signal: controller.signal })
+      .then(r => { if(r.ok) console.log('API health check passed'); })
+      .catch(() => console.log('API offline - demo mode'));
+  } catch(e) {
+    // Silently ignore - app is already visible
   }
 }
 
-
-
 boot();
-
-// After DOM is ready
 bindDemoTabs();
 
 function appendLog(html){
@@ -215,13 +296,10 @@ function appendLog(html){
 }
 
 function escapeHtml(str){
-  return String(str ?? '').replace(/[&<>"']/g, (c)=>({
-    "&":"&amp;",
-    "<":"&lt;",
-    ">":"&gt;",
-    "\"":"&quot;",
-    "'":"&#039;"
-  }[c]));
+  var codes = {'&':38,'<':60,'>':62,'"':34,"'":39};
+  return String(str ?? '').replace(/[&<>"']/g, function(c){
+    return '&#' + codes[c] + ';';
+  });
 }
 
 function bindDemoTabs(){
@@ -237,30 +315,27 @@ function bindDemoTabs(){
   buttons.forEach((btn)=>{
     btn.addEventListener('click', ()=>{
       const tab = btn.getAttribute('data-tab');
-
       buttons.forEach(b=>{
         const active = b.getAttribute('data-tab') === tab;
         b.classList.toggle('active', active);
         b.setAttribute('aria-selected', String(active));
       });
-
-      // toggle panes
       Object.keys(contentPanes).forEach((k)=>{
         const pane = contentPanes[k];
         if(!pane) return;
         const active = k === tab;
         pane.classList.toggle('show', active);
         pane.classList.toggle('active', active);
-        // keep fade class always for style
         pane.style.display = active ? 'block' : 'none';
       });
-
-      // ensure proper layout
+      if(tab === 'home'){
+        const terminal = document.getElementById('terminal');
+        if(terminal) terminal.innerHTML = 'PS C:\\AdminPanel> Ready...';
+      }
       window.dispatchEvent(new Event('resize'));
     });
   });
 
-  // initial display
   Object.keys(contentPanes).forEach((k)=>{
     const pane = contentPanes[k];
     if(!pane) return;
@@ -274,8 +349,438 @@ async function runTool(name){
     await launchAdUsersAndComputers();
     return;
   }
+  if(name === 'Password Reset'){
+    await launchPasswordReset();
+    return;
+  }
+  if(name === 'DNS Manager'){
+    await launchDnsManager();
+    return;
+  }
   setTimeout(()=>{appendLog(`[OK] ${escapeHtml(name)} launched successfully.`);},700);
 }
+
+// ============================================================
+// Password Reset Workflow
+// ============================================================
+
+let pwResetState = {
+  step: 1,
+  user: null,
+  policy: null,
+  password: '',
+  isTemporary: true
+};
+
+function closePasswordReset() {
+  const modal = document.getElementById('passwordResetModal');
+  modal.classList.add('hidden');
+  modal.style.setProperty('display', 'none', 'important');
+  pwResetState = { step: 1, user: null, policy: null, password: '', isTemporary: true };
+}
+
+function updateStepIndicator(step) {
+  document.querySelectorAll('.step-dot').forEach(dot => {
+    const s = parseInt(dot.dataset.step);
+    dot.classList.toggle('active', s === step);
+    dot.classList.toggle('done', s < step);
+  });
+}
+
+async function launchPasswordReset() {
+  appendLog('PS C:\\AdminPanel> Starting Password Reset Wizard...');
+  pwResetState = { step: 1, user: null, policy: null, password: '', isTemporary: true };
+  const modal = document.getElementById('passwordResetModal');
+  modal.classList.remove('hidden');
+  modal.style.setProperty('display', 'flex', 'important');
+  updateStepIndicator(1);
+  renderStep1();
+}
+
+function renderStep1() {
+  const content = document.getElementById('pwModalContent');
+  content.innerHTML = `
+    <h3><i class="fas fa-key"></i> Password Reset — Step 1</h3>
+    <p class="ad-subtle">Enter the user's SamAccountName or UserPrincipalName to locate the account.</p>
+    <div class="form-label"><i class="fas fa-user"></i> SamAccountName / UserPrincipalName</div>
+    <input type="text" id="pwIdentifier" placeholder="e.g. jdoe or jdoe@corp.local" autocomplete="off" />
+    <div id="pwLookupError" class="ad-error hidden"></div>
+    <div class="modal-actions">
+      <button class="ad-btn" onclick="closePasswordReset()" style="border-color:rgba(255,68,68,.4);color:#ff6666;">Cancel</button>
+      <button class="ad-btn" id="pwLookupBtn" onclick="pwLookupUser()"><i class="fas fa-search"></i> Lookup User</button>
+    </div>
+  `;
+  document.getElementById('pwIdentifier').focus();
+  document.getElementById('pwIdentifier').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') pwLookupUser();
+  });
+}
+
+async function pwLookupUser() {
+  const identifier = document.getElementById('pwIdentifier').value.trim();
+  const errorBox = document.getElementById('pwLookupError');
+  const lookupBtn = document.getElementById('pwLookupBtn');
+
+  if (!identifier) {
+    errorBox.classList.remove('hidden');
+    errorBox.innerHTML = '<i class="fas fa-triangle-exclamation"></i> Please enter a SamAccountName or UserPrincipalName.';
+    return;
+  }
+
+  errorBox.classList.add('hidden');
+  lookupBtn.disabled = true;
+  lookupBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Looking up...';
+
+  try {
+    // Determine if it looks like a UPN (contains @) or SamAccountName
+    const isUPN = identifier.includes('@');
+    const params = isUPN
+      ? `userPrincipalName=${encodeURIComponent(identifier)}`
+      : `samAccountName=${encodeURIComponent(identifier)}`;
+
+    const resp = await fetch(`${API_BASE}/api/ad/users/lookup?${params}`);
+
+    if (!resp.ok) {
+      const data = await resp.json().catch(() => ({}));
+      throw new Error(data.error || `User '${identifier}' not found`);
+    }
+
+    const data = await resp.json();
+    pwResetState.user = data.user;
+    appendLog(`[OK] User found: ${escapeHtml(data.user.cn || data.user.username)} (${escapeHtml(data.user.userPrincipalName || data.user.email || '')})`);
+
+    // Move to step 2 - fetch policy
+    await pwFetchPolicy();
+
+  } catch (err) {
+    errorBox.classList.remove('hidden');
+    errorBox.innerHTML = `<i class="fas fa-triangle-exclamation"></i> ${escapeHtml(err.message || err)}`;
+    appendLog(`[ERROR] ${escapeHtml(err.message || err)}`);
+    lookupBtn.disabled = false;
+    lookupBtn.innerHTML = '<i class="fas fa-search"></i> Lookup User';
+  }
+}
+
+async function pwFetchPolicy() {
+  const content = document.getElementById('pwModalContent');
+  content.innerHTML = `
+    <h3><i class="fas fa-key"></i> Password Reset — Step 2</h3>
+    <p class="ad-subtle"><i class="fas fa-spinner fa-spin"></i> Fetching domain password policy...</p>
+  `;
+
+  try {
+    const resp = await fetch(`${API_BASE}/api/ad/domain-password-policy`);
+    const data = await resp.json();
+    pwResetState.policy = data.policy || { min_password_length: 8, complexity_enabled: true };
+    appendLog(`[OK] Domain password policy loaded: min length = ${pwResetState.policy.min_password_length}`);
+    updateStepIndicator(2);
+    renderStep2();
+  } catch (err) {
+    pwResetState.policy = { min_password_length: 8, complexity_enabled: true };
+    appendLog(`[WARN] Using default policy (min length 8): ${escapeHtml(err.message || err)}`);
+    updateStepIndicator(2);
+    renderStep2();
+  }
+}
+
+function renderStep2() {
+  const user = pwResetState.user;
+  const policy = pwResetState.policy;
+  const content = document.getElementById('pwModalContent');
+
+  content.innerHTML = `
+    <h3><i class="fas fa-key"></i> Password Reset — Step 2</h3>
+
+    <div class="user-info">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div><div class="label">Name</div><div class="value">${escapeHtml(user.cn || user.username || '')}</div></div>
+        <div><div class="label">Username</div><div class="value">${escapeHtml(user.samAccountName || user.username || '')}</div></div>
+        <div><div class="label">UPN</div><div class="value">${escapeHtml(user.userPrincipalName || user.email || '')}</div></div>
+        <div><div class="label">Department</div><div class="value">${escapeHtml(user.department || '—')}</div></div>
+      </div>
+    </div>
+
+    <div class="policy-info">
+      <i class="fas fa-shield-alt"></i> Domain Password Policy: Minimum <strong>${policy.min_password_length}</strong> characters
+      ${policy.complexity_enabled ? '· Complexity required (upper, lower, digits, symbols)' : ''}
+    </div>
+
+    <p class="ad-subtle">Choose how you want to set the password:</p>
+
+    <div class="option-card" id="pwOptAuto" onclick="pwSelectOption('auto')">
+      <div class="opt-title"><i class="fas fa-magic"></i> Auto-generate password</div>
+      <div class="opt-desc">Generate a strong random password meeting domain policy requirements (${policy.min_password_length}+ chars, upper, lower, digits, symbols).</div>
+    </div>
+
+    <div class="option-card" id="pwOptManual" onclick="pwSelectOption('manual')">
+      <div class="opt-title"><i class="fas fa-pen"></i> Manual password entry</div>
+      <div class="opt-desc">Type a custom password. Must meet domain policy requirements.</div>
+    </div>
+
+    <div id="pwManualInput" class="hidden" style="margin-top:12px;">
+      <div class="form-label">New Password</div>
+      <input type="password" id="pwManualValue" placeholder="Enter new password..." />
+      <div id="pwManualError" class="ad-error hidden"></div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="ad-btn" onclick="renderStep1()" style="border-color:rgba(0,255,65,.2);"><i class="fas fa-arrow-left"></i> Back</button>
+      <button class="ad-btn" id="pwSetBtn" onclick="pwSetPassword()" disabled><i class="fas fa-check"></i> Set Password</button>
+    </div>
+  `;
+
+  // Default: auto-generate selected
+  pwSelectOption('auto');
+}
+
+function pwSelectOption(option) {
+  document.getElementById('pwOptAuto').classList.toggle('selected', option === 'auto');
+  document.getElementById('pwOptManual').classList.toggle('selected', option === 'manual');
+
+  const manualInput = document.getElementById('pwManualInput');
+  const setBtn = document.getElementById('pwSetBtn');
+
+  if (option === 'auto') {
+    manualInput.classList.add('hidden');
+    // Generate password
+    const policy = pwResetState.policy;
+    pwResetState.password = generatePassword(policy.min_password_length || 8);
+    setBtn.disabled = false;
+    setBtn.innerHTML = '<i class="fas fa-check"></i> Set Password';
+  } else {
+    manualInput.classList.remove('hidden');
+    pwResetState.password = '';
+    setBtn.disabled = true;
+    setBtn.innerHTML = '<i class="fas fa-check"></i> Set Password';
+    document.getElementById('pwManualValue').focus();
+
+    document.getElementById('pwManualValue').addEventListener('input', () => {
+      const val = document.getElementById('pwManualValue').value;
+      const policy = pwResetState.policy;
+      const errorBox = document.getElementById('pwManualError');
+      const setBtn = document.getElementById('pwSetBtn');
+
+      if (val.length < policy.min_password_length) {
+        errorBox.classList.remove('hidden');
+        errorBox.innerHTML = `<i class="fas fa-triangle-exclamation"></i> Password must be at least ${policy.min_password_length} characters.`;
+        setBtn.disabled = true;
+        return;
+      }
+
+      if (policy.complexity_enabled) {
+        const hasUpper = /[A-Z]/.test(val);
+        const hasLower = /[a-z]/.test(val);
+        const hasDigit = /\d/.test(val);
+        const hasSymbol = /[^a-zA-Z0-9]/.test(val);
+        if (!hasUpper || !hasLower || !hasDigit || !hasSymbol) {
+          errorBox.classList.remove('hidden');
+          errorBox.innerHTML = '<i class="fas fa-triangle-exclamation"></i> Password must include uppercase, lowercase, digits, and symbols.';
+          setBtn.disabled = true;
+          return;
+        }
+      }
+
+      errorBox.classList.add('hidden');
+      pwResetState.password = val;
+      setBtn.disabled = false;
+    });
+  }
+}
+
+function generatePassword(minLength) {
+  const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const lower = 'abcdefghijklmnopqrstuvwxyz';
+  const digits = '0123456789';
+  const symbols = '!@#$%^&*()_+-=[]{}|;:,.<>?';
+
+  const all = upper + lower + digits + symbols;
+  let password = '';
+
+  // Ensure at least one of each type
+  password += upper[Math.floor(Math.random() * upper.length)];
+  password += lower[Math.floor(Math.random() * lower.length)];
+  password += digits[Math.floor(Math.random() * digits.length)];
+  password += symbols[Math.floor(Math.random() * symbols.length)];
+
+  // Fill remaining length
+  for (let i = password.length; i < minLength; i++) {
+    password += all[Math.floor(Math.random() * all.length)];
+  }
+
+  // Shuffle
+  password = password.split('').sort(() => Math.random() - 0.5).join('');
+  return password;
+}
+
+async function pwSetPassword() {
+  const user = pwResetState.user;
+  const password = pwResetState.password;
+  const setBtn = document.getElementById('pwSetBtn');
+
+  if (!password) {
+    appendLog('[ERROR] No password to set.');
+    return;
+  }
+
+  setBtn.disabled = true;
+  setBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Setting password...';
+
+  try {
+    const resp = await fetch(`${API_BASE}/api/ad/users/${user.id}/set-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password, isTemporary: true })
+    });
+
+    const data = await resp.json();
+
+    if (!resp.ok) {
+      throw new Error(data.error || 'Failed to set password');
+    }
+
+    appendLog(`[OK] Password set successfully for ${escapeHtml(user.cn || user.username)}`);
+    updateStepIndicator(3);
+    renderStep3();
+
+  } catch (err) {
+    appendLog(`[ERROR] ${escapeHtml(err.message || err)}`);
+    setBtn.disabled = false;
+    setBtn.innerHTML = '<i class="fas fa-check"></i> Set Password';
+    alert('Failed to set password: ' + (err.message || err));
+  }
+}
+
+function renderStep3() {
+  const user = pwResetState.user;
+  const password = pwResetState.password;
+  const content = document.getElementById('pwModalContent');
+
+  content.innerHTML = `
+    <h3><i class="fas fa-check-circle" style="color:#00ff41;"></i> Password Reset — Complete</h3>
+
+    <div class="user-info">
+      <div><div class="label">User</div><div class="value">${escapeHtml(user.cn || user.username)}</div></div>
+      <div style="margin-top:4px;"><div class="label">Username</div><div class="value">${escapeHtml(user.samAccountName || user.username)}</div></div>
+    </div>
+
+    <p class="ad-subtle" style="margin-bottom:8px;">The following temporary password has been set. The user must change it at next logon.</p>
+
+    <div class="password-display" id="pwDisplay">
+      <span id="pwText" style="filter:blur(4px);" data-visible="false">${escapeHtml(password)}</span>
+      <button class="toggle-vis" id="pwToggleVis" onclick="pwToggleVisibility()" title="Toggle visibility">
+        <i class="fas fa-eye"></i>
+      </button>
+    </div>
+
+    <div style="display:flex;gap:10px;margin-bottom:12px;">
+      <button class="copy-btn" onclick="pwCopyPassword()"><i class="fas fa-copy"></i> Copy to Clipboard</button>
+    </div>
+
+    <div class="policy-info" style="border-left-color:#ffaa00;">
+      <i class="fas fa-info-circle"></i> This is a temporary password. User will be prompted to change at next logon.
+    </div>
+
+    <div class="modal-actions">
+      <button class="ad-btn" onclick="closePasswordReset()"><i class="fas fa-check"></i> Done</button>
+    </div>
+  `;
+
+  updateStepIndicator(3);
+}
+
+function pwToggleVisibility() {
+  const pwText = document.getElementById('pwText');
+  const icon = document.querySelector('#pwToggleVis i');
+  const isHidden = pwText.dataset.visible === 'false' || !pwText.dataset.visible;
+  if (isHidden) {
+    pwText.style.filter = 'none';
+    pwText.dataset.visible = 'true';
+    icon.className = 'fas fa-eye-slash';
+  } else {
+    pwText.style.filter = 'blur(4px)';
+    pwText.dataset.visible = 'false';
+    icon.className = 'fas fa-eye';
+  }
+}
+
+// Initialize as blurred
+document.addEventListener('DOMContentLoaded', () => {
+  // Will be set when step 3 renders
+});
+
+function pwCopyPassword() {
+  const password = pwResetState.password;
+  if (!password) return;
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(password).then(() => {
+      appendLog('[OK] Password copied to clipboard.');
+      const btn = document.querySelector('.copy-btn');
+      if (btn) {
+        const orig = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+        setTimeout(() => { btn.innerHTML = orig; }, 2000);
+      }
+    }).catch(() => {
+      fallbackCopy(password);
+    });
+  } else {
+    fallbackCopy(password);
+  }
+}
+
+function fallbackCopy(text) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  try {
+    document.execCommand('copy');
+    appendLog('[OK] Password copied to clipboard.');
+  } catch (e) {
+    appendLog('[WARN] Could not copy to clipboard. Please copy manually.');
+  }
+  document.body.removeChild(ta);
+}
+
+async function pwRegeneratePassword() {
+  const policy = pwResetState.policy;
+  const newPassword = generatePassword(policy.min_password_length || 8);
+  const user = pwResetState.user;
+
+  try {
+    // Update password in DB
+    const resp = await fetch(`${API_BASE}/api/ad/users/${user.id}/set-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: newPassword, isTemporary: true })
+    });
+
+    if (!resp.ok) {
+      const data = await resp.json().catch(() => ({}));
+      throw new Error(data.error || 'Failed to update password');
+    }
+
+    pwResetState.password = newPassword;
+    const pwText = document.getElementById('pwText');
+    if (pwText) {
+      pwText.textContent = newPassword;
+      pwText.style.filter = 'blur(4px)';
+      pwText.dataset.visible = 'false';
+      document.querySelector('#pwToggleVis i').className = 'fas fa-eye';
+    }
+    appendLog(`[OK] Password regenerated and updated for ${escapeHtml(user.cn || user.username)}`);
+  } catch (err) {
+    appendLog(`[ERROR] ${escapeHtml(err.message || err)}`);
+    alert('Failed to regenerate password: ' + (err.message || err));
+  }
+}
+
+// ============================================================
+// AD Users & Computers
+// ============================================================
 
 async function launchAdUsersAndComputers(){
   const view=document.getElementById('adView');
@@ -298,8 +803,6 @@ async function launchAdUsersAndComputers(){
     if(!treeResp.ok){
       throw new Error(`Tree API failed: HTTP ${treeResp.status}`);
     }
-
-
 
     if(!usersResp.ok) throw new Error(`Users API failed: ${usersResp.status}`);
 
@@ -375,7 +878,6 @@ async function launchAdUsersAndComputers(){
     try{
       const resp = await fetch(`${API_BASE}/api/ad/users?search=${encodeURIComponent(q)}&limit=200`);
 
-
 if(!resp.ok){
         let detail = '';
         try { const d = await resp.json(); detail = d?.error ? ` - ${d.error}` : ''; } catch {}
@@ -410,7 +912,302 @@ if(!resp.ok){
     }
   }
 
-  appendLog('[OK] Open AD Users & Computers loaded (sample data from Aiven MySQL).');
+  appendLog('[OK] Open AD Users & Computers loaded.');
+}
+
+// ============================================================
+// DNS Manager
+// ============================================================
+
+let dnsState = {
+  zone: 'corp.local',
+  records: [],
+  selectedRecordId: null
+};
+
+function closeDnsManager() {
+  const modal = document.getElementById('dnsManagerModal');
+  modal.classList.add('hidden');
+  modal.style.setProperty('display', 'none', 'important');
+  dnsState = { zone: 'corp.local', records: [], selectedRecordId: null };
+}
+
+async function launchDnsManager() {
+  appendLog('PS C:\\AdminPanel> Launching DNS Manager...');
+  dnsState = { zone: 'corp.local', records: [], selectedRecordId: null };
+  const modal = document.getElementById('dnsManagerModal');
+  modal.classList.remove('hidden');
+  modal.style.setProperty('display', 'flex', 'important');
+  await dnsLoadZones();
+}
+
+async function dnsLoadZones() {
+  const content = document.getElementById('dnsModalContent');
+  content.innerHTML = `
+    <div class="dns-header">
+      <h3><i class="fas fa-globe"></i> DNS Manager</h3>
+      <div class="dns-controls">
+        <select id="dnsZoneSelect" class="dns-select" onchange="dnsOnZoneChange()">
+          <option value="corp.local">corp.local</option>
+          <option value="corp.internal">corp.internal</option>
+          <option value="corp.external">corp.external</option>
+        </select>
+        <button class="ad-btn" onclick="dnsRefreshRecords()"><i class="fas fa-sync-alt"></i> Refresh</button>
+      </div>
+    </div>
+    <div class="dns-info"><i class="fas fa-info-circle"></i> Manage DNS records for the selected zone. Add, edit, or delete A, CNAME, MX, and TXT records.</div>
+    <div id="dnsLoading" class="ad-subtle"><i class="fas fa-spinner fa-spin"></i> Loading DNS records...</div>
+    <div id="dnsError" class="ad-error hidden"></div>
+    <div id="dnsRecordsContainer"></div>
+  `;
+
+  await dnsRefreshRecords();
+}
+
+async function dnsRefreshRecords() {
+  const zone = document.getElementById('dnsZoneSelect')?.value || 'corp.local';
+  dnsState.zone = zone;
+  const loading = document.getElementById('dnsLoading');
+  const errorBox = document.getElementById('dnsError');
+  const container = document.getElementById('dnsRecordsContainer');
+
+  loading.classList.remove('hidden');
+  errorBox.classList.add('hidden');
+  container.innerHTML = '';
+
+  try {
+    const resp = await fetch(`${API_BASE}/api/dns/records?zone=${encodeURIComponent(zone)}`);
+    if (!resp.ok) {
+      const data = await resp.json().catch(() => ({}));
+      throw new Error(data.error || `Failed to load DNS records (HTTP ${resp.status})`);
+    }
+    const data = await resp.json();
+    dnsState.records = data.records || [];
+    appendLog(`[OK] Loaded ${dnsState.records.length} DNS records for ${zone}`);
+    dnsRenderRecords();
+  } catch (err) {
+    errorBox.classList.remove('hidden');
+    errorBox.innerHTML = `<i class="fas fa-triangle-exclamation"></i> ${escapeHtml(err.message || err)}`;
+    appendLog(`[ERROR] ${escapeHtml(err.message || err)}`);
+    dnsState.records = [];
+    dnsRenderRecords();
+  } finally {
+    loading.classList.add('hidden');
+  }
+}
+
+function dnsRenderRecords() {
+  const container = document.getElementById('dnsRecordsContainer');
+  if (!container) return;
+
+  const records = dnsState.records;
+  if (!records.length) {
+    container.innerHTML = '<div class="dns-empty">No DNS records found for this zone.</div>';
+    return;
+  }
+
+  let html = `
+    <div class="dns-table-wrap">
+      <table class="dns-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Value</th>
+            <th>TTL</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+  `;
+
+  records.forEach(r => {
+    html += `
+      <tr>
+        <td>${escapeHtml(r.name)}</td>
+        <td><span class="dns-type">${escapeHtml(r.type)}</span></td>
+        <td>${escapeHtml(r.value)}</td>
+        <td>${escapeHtml(String(r.ttl || ''))}</td>
+        <td>
+          <div class="dns-actions">
+            <button class="dns-action-btn" title="Edit" onclick="dnsEditRecord(${r.id})"><i class="fas fa-pen"></i></button>
+            <button class="dns-action-btn" title="Delete" onclick="dnsDeleteRecord(${r.id})"><i class="fas fa-trash"></i></button>
+          </div>
+        </td>
+      </tr>
+    `;
+  });
+
+  html += `
+        </tbody>
+      </table>
+    </div>
+    <div class="dns-add-row">
+      <div class="dns-field">
+        <label>Name</label>
+        <input type="text" id="dnsNewName" placeholder="e.g. www or @" />
+      </div>
+      <div class="dns-field">
+        <label>Type</label>
+        <select id="dnsNewType">
+          <option value="A">A</option>
+          <option value="CNAME">CNAME</option>
+          <option value="MX">MX</option>
+          <option value="TXT">TXT</option>
+        </select>
+      </div>
+      <div class="dns-field">
+        <label>Value</label>
+        <input type="text" id="dnsNewValue" placeholder="e.g. 10.0.0.50" />
+      </div>
+      <div class="dns-field">
+        <label>TTL</label>
+        <input type="number" id="dnsNewTtl" value="3600" />
+      </div>
+      <button class="ad-btn" onclick="dnsAddRecord()" style="align-self:end;"><i class="fas fa-plus"></i> Add Record</button>
+    </div>
+  `;
+
+  container.innerHTML = html;
+}
+
+function dnsOnZoneChange() {
+  dnsRefreshRecords();
+}
+
+async function dnsAddRecord() {
+  const name = document.getElementById('dnsNewName')?.value.trim();
+  const type = document.getElementById('dnsNewType')?.value;
+  const value = document.getElementById('dnsNewValue')?.value.trim();
+  const ttl = parseInt(document.getElementById('dnsNewTtl')?.value || '3600', 10);
+
+  if (!name || !value) {
+    alert('Name and Value are required.');
+    return;
+  }
+
+  try {
+    const resp = await fetch(`${API_BASE}/api/dns/records`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ zone: dnsState.zone, name, type, value, ttl })
+    });
+
+    if (!resp.ok) {
+      const data = await resp.json().catch(() => ({}));
+      throw new Error(data.error || 'Failed to add DNS record');
+    }
+
+    appendLog(`[OK] Added DNS record: ${name} (${type}) -> ${value}`);
+    await dnsRefreshRecords();
+  } catch (err) {
+    appendLog(`[ERROR] ${escapeHtml(err.message || err)}`);
+    alert('Failed to add DNS record: ' + (err.message || err));
+  }
+}
+
+async function dnsDeleteRecord(id) {
+  if (!confirm('Delete this DNS record?')) return;
+
+  try {
+    const resp = await fetch(`${API_BASE}/api/dns/records/${id}?zone=${encodeURIComponent(dnsState.zone)}`, {
+      method: 'DELETE'
+    });
+
+    if (!resp.ok) {
+      const data = await resp.json().catch(() => ({}));
+      throw new Error(data.error || 'Failed to delete DNS record');
+    }
+
+    appendLog(`[OK] Deleted DNS record ID ${id}`);
+    await dnsRefreshRecords();
+  } catch (err) {
+    appendLog(`[ERROR] ${escapeHtml(err.message || err)}`);
+    alert('Failed to delete DNS record: ' + (err.message || err));
+  }
+}
+
+function closeDnsEditModal() {
+  const modal = document.getElementById('dnsEditModal');
+  modal.classList.add('hidden');
+  modal.style.setProperty('display', 'none', 'important');
+}
+
+async function dnsEditRecord(id) {
+  const record = dnsState.records.find(r => r.id === id);
+  if (!record) return;
+
+  const modal = document.getElementById('dnsEditModal');
+  const content = document.getElementById('dnsEditContent');
+  
+  content.innerHTML = `
+    <div class="dns-info"><i class="fas fa-info-circle"></i> Editing record: <strong>${escapeHtml(record.name)}</strong> (${escapeHtml(record.type)})</div>
+    <div class="dns-field">
+      <label>Name</label>
+      <input type="text" id="dnsEditName" value="${escapeHtml(record.name)}" />
+    </div>
+    <div class="dns-field">
+      <label>Type</label>
+      <select id="dnsEditType">
+        <option value="A" ${record.type === 'A' ? 'selected' : ''}>A</option>
+        <option value="CNAME" ${record.type === 'CNAME' ? 'selected' : ''}>CNAME</option>
+        <option value="MX" ${record.type === 'MX' ? 'selected' : ''}>MX</option>
+        <option value="TXT" ${record.type === 'TXT' ? 'selected' : ''}>TXT</option>
+        <option value="NS" ${record.type === 'NS' ? 'selected' : ''}>NS</option>
+        <option value="PTR" ${record.type === 'PTR' ? 'selected' : ''}>PTR</option>
+        <option value="SRV" ${record.type === 'SRV' ? 'selected' : ''}>SRV</option>
+        <option value="AAAA" ${record.type === 'AAAA' ? 'selected' : ''}>AAAA</option>
+      </select>
+    </div>
+    <div class="dns-field">
+      <label>Value</label>
+      <input type="text" id="dnsEditValue" value="${escapeHtml(record.value)}" />
+    </div>
+    <div class="dns-field">
+      <label>TTL (seconds)</label>
+      <input type="number" id="dnsEditTtl" value="${record.ttl || 3600}" />
+    </div>
+    <div class="modal-actions">
+      <button class="ad-btn" onclick="closeDnsEditModal()" style="border-color:rgba(255,68,68,.4);color:#ff6666;">Cancel</button>
+      <button class="ad-btn" onclick="dnsSaveEdit(${id})"><i class="fas fa-check"></i> Save Changes</button>
+    </div>
+  `;
+
+  modal.classList.remove('hidden');
+  modal.style.setProperty('display', 'flex', 'important');
+}
+
+async function dnsSaveEdit(id) {
+  const name = document.getElementById('dnsEditName')?.value.trim();
+  const type = document.getElementById('dnsEditType')?.value;
+  const value = document.getElementById('dnsEditValue')?.value.trim();
+  const ttl = parseInt(document.getElementById('dnsEditTtl')?.value || '3600', 10);
+
+  if (!name || !value) {
+    alert('Name and Value are required.');
+    return;
+  }
+
+  closeDnsEditModal();
+
+  try {
+    const resp = await fetch(`${API_BASE}/api/dns/records/${id}?zone=${encodeURIComponent(dnsState.zone)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, type, value, ttl })
+    });
+
+    if (!resp.ok) {
+      const data = await resp.json().catch(() => ({}));
+      throw new Error(data.error || 'Failed to update DNS record');
+    }
+
+    appendLog(`[OK] Updated DNS record ID ${id}: ${name} (${type}) -> ${value}`);
+    await dnsRefreshRecords();
+  } catch (err) {
+    appendLog(`[ERROR] ${escapeHtml(err.message || err)}`);
+    alert('Failed to update DNS record: ' + (err.message || err));
+  }
 }
 
 // matrix
